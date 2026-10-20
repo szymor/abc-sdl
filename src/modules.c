@@ -399,6 +399,20 @@ void modules_setup(Scene *s, const char *data_root)
             if (c)
                 c->hover_only = true;
         }
+        /* These are interaction hotspots; their artwork is already part of
+           `tlo`.  Drawing the sprites as well creates a slightly doubled or
+           shifted edge, so keep them clickable but invisible. */
+        static const char *baked[] = {"browWyrL", "browWyrP", "KlTabl",
+                                      "KlKamera", "KlAparat", "KlGra",
+                                      "ciuchcia", NULL};
+        for (int i = 0; baked[i]; i++) {
+            Comp *c = scene_find(s, baked[i]);
+            if (c) {
+                c->baked_overlay = true;
+                if (getenv("ABC_DEBUG"))
+                    fprintf(stderr, "baked overlay %s hidden\n", c->name);
+            }
+        }
     }
 
     /* Telewizorek: mark media buttons whose clip is absent (the original

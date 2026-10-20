@@ -584,6 +584,9 @@ static void load_comp(Scene *s, Comp *c)
             if (c->frame_w <= 0)
                 c->frame_w = tw;
             c->frame_h = th;
+            if (c->align_client && getenv("ABC_DEBUG"))
+                fprintf(stderr, "align %s native %dx%d\n", c->name,
+                        c->frame_w, c->frame_h);
         }
     }
 
@@ -793,10 +796,9 @@ Scene *scene_load(SDL_Renderer *r, const char *data_root, int id)
     if (s->module == 0) {
         s->origin_x = (ABC_W - 482) / 2;
         s->origin_y = (ABC_H - 476) / 2;
-    } else if (s->module == 2 || s->module == 3) {
-        s->origin_x = -4;
-        s->origin_y = -4;
     }
+    if (getenv("ABC_DEBUG"))
+        fprintf(stderr, "scene %d origin %d,%d\n", id, s->origin_x, s->origin_y);
 
     s->now = SDL_GetTicks();
     s->start_time = s->now;
@@ -929,7 +931,7 @@ void comp_rect(Scene *s, Comp *c, SDL_FRect *out)
     float y = (float)(s->origin_y + c->top);
     float w = (float)c->width;
     float h = (float)c->height;
-    if (c->autosize && c->tex) {
+    if ((c->autosize || c->align_client) && c->tex) {
         w = (float)c->frame_w;
         h = (float)c->frame_h;
     }
@@ -1302,6 +1304,8 @@ static void render_comp(Scene *s, Comp *c)
         fprintf(stderr, "draw %-12s vis=%d tex=%p state=%d sel=%d\n", c->name,
                 (int)c->visible, (void *)c->tex, (int)c->state, comp_frame_selector(c));
     if (!c->visible)
+        return;
+    if (c->baked_overlay)
         return;
     if (!c->tex) {
         /* Components without a bitmap can still have a VCL Color; the puzzle

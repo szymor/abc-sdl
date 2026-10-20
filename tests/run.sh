@@ -244,9 +244,19 @@ shot $TMP/word-letter.png
 move 116 164
 wait 200
 shot $TMP/word-object.png
+scene 2003
+wait 100
+move 382 167
+wait 200
+shot $TMP/letter-hover.png
 EOF
-SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
+ABC_DEBUG=1 SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
     --script "$TMP/wordhover.txt" > "$TMP/wordhover.log" 2>&1
+grep -q "scene 3016 origin 0,0" "$TMP/wordhover.log"
+grep -q "scene 2003 origin 0,0" "$TMP/wordhover.log"
+grep -q "align tlo native 640x480" "$TMP/wordhover.log"
+grep -q "align Tlo native 640x480" "$TMP/wordhover.log"
+grep -q "baked overlay KlTabl hidden" "$TMP/wordhover.log"
 if cmp -s "$TMP/word-rest.png" "$TMP/word-title.png"; then
     echo "title hover did not show the syllable strip" >&2
     exit 1
@@ -263,7 +273,7 @@ if cmp -s "$TMP/word-rest.png" "$TMP/word-object.png"; then
     echo "object hover did not show the highlight overlay" >&2
     exit 1
 fi
-echo "   whole word at rest; syllables/letter/object appear on hover"
+echo "   native 640x480 background, no doubled baked sprites, hover overlays aligned"
 
 echo "== video (best effort)"
 mkdir -p "$ROOT/tests/out"
