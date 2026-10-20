@@ -1,4 +1,5 @@
 #include "scene.h"
+#include "cursors_data.h"
 #include "font.h"
 #include "util.h"
 
@@ -26,6 +27,52 @@ static bool file_exists(const char *path)
         return false;
     fclose(f);
     return true;
+}
+
+static SDL_Cursor *g_cursor_cache[32];
+
+static SDL_Cursor *cursor_get(const char *name)
+{
+    for (int i = 0; i < abc_cursor_count && i < 32; i++) {
+        if (strcasecmp(abc_cursors[i].name, name) != 0)
+            continue;
+        if (!g_cursor_cache[i]) {
+            const AbcCursorDef *d = &abc_cursors[i];
+            g_cursor_cache[i] = SDL_CreateCursor(d->data, d->mask, d->w, d->h,
+                                                 d->hot_x, d->hot_y);
+            if (g_cursor_cache[i] && getenv("ABC_DEBUG"))
+                log_info("cursor %s installed", d->name);
+        }
+        return g_cursor_cache[i];
+    }
+    return NULL;
+}
+
+void scene_shutdown_cursors(void)
+{
+    for (int i = 0; i < 32; i++) {
+        if (g_cursor_cache[i]) {
+            SDL_DestroyCursor(g_cursor_cache[i]);
+            g_cursor_cache[i] = NULL;
+        }
+    }
+}
+
+static void scene_apply_cursor(Scene *s)
+{
+    const char *want = NULL;
+    for (int i = 0; i < s->ncomps; i++) {
+        Comp *c = &s->comps[i];
+        if (c->cls != CC_CURSORS)
+            continue;
+        DfmValue *v = dfm_prop(c->src, "Kursory.Strings");
+        if (dfm_has(v, "PEDZEL"))
+            want = "PEDZEL";
+    }
+    if (want)
+        SDL_SetCursor(cursor_get(want));
+    else
+        SDL_SetCursor(NULL); /* back to the system arrow */
 }
 
 static const unsigned char *bmp_trim(const unsigned char *d, int n, int *out_len)
@@ -521,6 +568,7 @@ Scene *scene_load(SDL_Renderer *r, const char *data_root, int id)
         load_comp(s, &s->comps[i]);
 
     modules_setup(s, data_root);
+    scene_apply_cursor(s);
     free(data);
     log_info("scene %d loaded (%d components)", id, s->ncomps);
     return s;

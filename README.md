@@ -32,7 +32,7 @@ The reverse-engineering specification this port is based on lives in
 | Zgadywanka 1–4 | complete — all 35 scenes, counters and feedback |
 | Audio | WAV one-shots (SDL3_mixer) + shuffled MIDI playlists (FluidSynth) |
 | Video (AVI) | complete — Cinepak/MSVideo1/Indeo3 decoded by FFmpeg into the `TEkran` rect, with audio |
-| Cursors (`PEDZEL`, `LIT_*`) | not yet extracted; the maze draws a marker instead |
+| Cursors (`PEDZEL`, `LIT_*`) | brush cursor extracted from `ABC.EXE`; the maze draws the word's letter as a sprite (the `LIT_*` resources are available in `src/cursors_data.h`) |
 | Printing | exports a PNG instead of GDI printing |
 
 Every scene was loaded and drawn in a headless pass (`--script` over all 294
@@ -62,6 +62,13 @@ Build:
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
+```
+
+`src/cursors_data.h` is generated from the original executable (requires
+`icoutils`); regenerate it with:
+
+```bash
+python3 tools/extract_cursors.py ../abc-re/abc/ABC.EXE
 ```
 
 ## Run
@@ -237,10 +244,19 @@ stream's audio is decoded once to 44.1 kHz stereo PCM and played through the
 same mixer as the WAV one-shots. When FFmpeg is unavailable at build time the
 old placeholder card is used instead.
 
+## Cursors
+
+The brush (`PEDZEL`) and the twelve maze letters (`LIT_C`, `LIT_D`, …) are
+extracted from `ABC.EXE` into `src/cursors_data.h` by
+`tools/extract_cursors.py` (requires `wrestool` from `icoutils`). The brush is
+installed while a colouring page is open. The maze currently draws the word's
+initial as a sprite at the player position rather than replacing the OS
+pointer; the extracted `LIT_*` arrays are ready for a future cursor mode.
+
 **Next milestones**
 
-1. **Original cursors** — extract `RT_CURSOR` groups from `ABC.EXE`
-   (`PEDZEL`, `LIT_C`…) and use them for colouring/maze.
+1. Use the `LIT_*` cursors as the actual maze pointer (and revisit whether the
+   player letter should follow the pointer or replace it).
 2. **Polish glyphs in the tiny font** (currently ASCII only) and a proper
    print dialog/export layout.
 3. Optional `--fix-content` pack: make IGLO reachable, repair the YETI

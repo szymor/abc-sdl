@@ -634,6 +634,7 @@ int main(int argc, char **argv)
 
     if (scene)
         scene_free(scene);
+    scene_shutdown_cursors();
     audio_music_stop();
     audio_shutdown();
     SDL_DestroyTexture(canvas);
