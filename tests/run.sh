@@ -324,13 +324,15 @@ echo "== TV video pauses background music"
 cat > "$TMP/tvmusic.txt" <<'EOF'
 scene 3016
 wait 100
-click 280 400
+click 350 400
 wait 700
+move 317 36
+wait 300
 dump
 click 300 300
 wait 300
 dump
-click 350 400
+click 280 400
 wait 700
 click 300 300
 wait 300
@@ -346,7 +348,9 @@ if ABC_DEBUG=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=dummy "$BIN" \
             grep -E "music|video ended" "$TMP/tvmusic.log" >&2
             exit 1
         fi
-        echo "   music paused for TV clips and resumed afterwards"
+        grep -q "video soundtrack active" "$TMP/tvmusic.log"
+        grep -q "audio cue blocked while video is playing" "$TMP/tvmusic.log"
+        echo "   music paused, other cues blocked; music restored afterwards"
     else
         echo "   TV music test skipped (video unsupported)" >&2
     fi

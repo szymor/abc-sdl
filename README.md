@@ -246,7 +246,9 @@ Requested fixes that are active by default:
   sync with their audio; leaving a scene or closing a video stops its sound.
   TV and credits videos pause the background MIDI playlist (including any
   buffered synth notes) and resume it at the same tick when playback ends or
-  the clip is dismissed.
+  the clip is dismissed. While a video is active its soundtrack is exclusive:
+  speech and SFX requests are ignored, and generic stop-all operations cannot
+  stop the video track.
 * **Activity completion:** a solved game now stays on its completed screen;
   the child leaves with the blue `kBack` pencil (or the train icon where
   present). There is no automatic return to the word scene.

@@ -13,6 +13,8 @@ MIX_Audio *audio_load_mem(const void *data, int len);
 void audio_free_mem(MIX_Audio *a);
 void audio_play(MIX_Audio *a, float gain);      /* speech: stops previous speech */
 void audio_play_sfx(MIX_Audio *a, float gain);  /* SFX: may overlap speech */
+void audio_play_video(MIX_Audio *a, float gain);/* exclusive video soundtrack */
+void audio_stop_video(void);
 void audio_stop_all(void);
 
 /* Background MIDI playlist. Stops the previous one if the signature differs.

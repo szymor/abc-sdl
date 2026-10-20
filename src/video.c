@@ -327,8 +327,7 @@ VideoPlayer *video_open(SDL_Renderer *renderer, const char *path)
        scheduled by their PTS, not by a fixed frame counter, so long clips do
        not drift away from the audio. */
     v->start_ms = SDL_GetTicks();
-    if (v->audio)
-        audio_play(v->audio, 1.0f);
+    audio_play_video(v->audio, 1.0f);
     v->next_ms = v->start_ms + v->frame_ms;
     return v;
 #else
@@ -378,7 +377,8 @@ void video_close(VideoPlayer *v)
 {
     if (!v)
         return;
-    /* Stop the video's audio (and any other one-shot overlapping it). */
+    /* Stop the exclusive video soundtrack, then clear any stale one-shots. */
+    audio_stop_video();
     audio_stop_all();
 #ifdef HAVE_FFMPEG
     if (v->tex)

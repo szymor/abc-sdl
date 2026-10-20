@@ -15,6 +15,8 @@ static MIX_Mixer *mixer = NULL;
 #define AUDIO_TRACKS 24
 static MIX_Track *tracks[AUDIO_TRACKS];
 static int next_track = 0;
+static int video_track = -1;
+static bool video_active = false;
 
 typedef struct {
     char *path;
@@ -195,6 +197,8 @@ void audio_shutdown(void)
     free(music_sig);
     music_sig = NULL;
     music_paused = false;
+    video_track = -1;
+    video_active = false;
 }
 
 MIX_Audio *audio_load_file(const char *path)
@@ -242,6 +246,11 @@ void audio_play(MIX_Audio *a, float gain)
 {
     if (!audio_enabled || !a)
         return;
+    if (video_active) {
+        if (getenv("ABC_DEBUG"))
+            log_info("audio cue blocked while video is playing");
+        return;
+    }
     if (gain <= 0.0f)
         gain = 1.0f;
     /* Only one spoken cue at a time.  The original uses several players, but
@@ -267,6 +276,11 @@ void audio_play_sfx(MIX_Audio *a, float gain)
 {
     if (!audio_enabled || !a)
         return;
+    if (video_active) {
+        if (getenv("ABC_DEBUG"))
+            log_info("audio sfx blocked while video is playing");
+        return;
+    }
     if (gain <= 0.0f)
         gain = 1.0f;
     /* Non-speech effects (wrong-answer buzz, counters) may play on top of a
@@ -289,11 +303,53 @@ void audio_play_sfx(MIX_Audio *a, float gain)
     MIX_PlayTrack(tracks[pick], 0);
 }
 
+void audio_play_video(MIX_Audio *a, float gain)
+{
+    if (!audio_enabled)
+        return;
+    if (gain <= 0.0f)
+        gain = 1.0f;
+    /* Only the video is audible for its duration: pause the MIDI playlist as
+       well as stopping WAV one-shots.  This also applies to a video without
+       an audio stream: normal speech/SFX stay suppressed while it plays. */
+    audio_music_pause();
+    /* The video soundtrack is exclusive: stop the previous video and every
+       one-shot, then reserve the audio mode until video_close. */
+    if (video_active)
+        audio_stop_video();
+    audio_stop_all();
+    video_track = -1;
+    video_active = true;
+    if (!a) {
+        if (getenv("ABC_DEBUG"))
+            log_info("video audio mode active (silent clip)");
+        return;
+    }
+    int pick = next_track;
+    next_track = (next_track + 1) % AUDIO_TRACKS;
+    MIX_SetTrackGain(tracks[pick], gain);
+    MIX_SetTrackAudio(tracks[pick], a);
+    MIX_PlayTrack(tracks[pick], 0);
+    video_track = pick;
+    if (getenv("ABC_DEBUG"))
+        log_info("video soundtrack active");
+}
+
+void audio_stop_video(void)
+{
+    if (video_track >= 0 && video_track < AUDIO_TRACKS && tracks[video_track])
+        MIX_StopTrack(tracks[video_track], 0);
+    video_track = -1;
+    video_active = false;
+}
+
 void audio_stop_all(void)
 {
     if (!audio_enabled)
         return;
     for (int i = 0; i < AUDIO_TRACKS; i++) {
+        if (video_active && i == video_track)
+            continue;
         if (tracks[i])
             MIX_StopTrack(tracks[i], 0);
     }
@@ -340,6 +396,8 @@ void audio_music_pause(void)
 
 bool audio_music_resume(void)
 {
+    if (video_active)
+        return false;
 #ifdef HAVE_FLUIDSYNTH
     if (!music_paused || !fs_player) {
         music_paused = false;
@@ -372,6 +430,8 @@ const char *audio_music_signature(void)
 void audio_music_play(const char *const *paths, int count, bool random_loop, const char *signature)
 {
     if (!paths || count <= 0)
+        return;
+    if (video_active)
         return;
     if (music_sig && signature && strcmp(music_sig, signature) == 0) {
         if (music_paused)
