@@ -134,12 +134,37 @@ static SDL_Texture *texture_from_surface(SDL_Renderer *r, SDL_Surface *surf, int
     int stride = rgba->pitch / 4;
     uint32_t corner = px[(rgba->h - 1) * stride]; /* VCL transparent colour */
     if (key_black && (corner & 0x00FFFFFFu) == 0) {
-        /* Toolbar/animation sprites are drawn over a black rectangle in the
-           bitmap.  The pure-black background becomes transparent, while the
-           dark (8,8,8) outlines stay intact. */
-        for (int i = 0; i < total; i++)
-            if ((px[i] & 0x00FFFFFFu) == 0)
-                px[i] = 0;
+        /* Remove only the black backdrop connected to the sprite border.
+           Interior pure-black details (dots, outlines) stay opaque. */
+        int *stack = xmalloc((size_t)total * sizeof(int));
+        int sp = 0;
+        for (int x = 0; x < rgba->w; x++) {
+            int p0 = x, p1 = (rgba->h - 1) * stride + x;
+            if ((px[p0] & 0xFF000000u) && !(px[p0] & 0x00FFFFFFu)) { px[p0] = 0; stack[sp++] = p0; }
+            if ((px[p1] & 0xFF000000u) && !(px[p1] & 0x00FFFFFFu)) { px[p1] = 0; stack[sp++] = p1; }
+        }
+        for (int y = 0; y < rgba->h; y++) {
+            int p0 = y * stride, p1 = y * stride + rgba->w - 1;
+            if ((px[p0] & 0xFF000000u) && !(px[p0] & 0x00FFFFFFu)) { px[p0] = 0; stack[sp++] = p0; }
+            if ((px[p1] & 0xFF000000u) && !(px[p1] & 0x00FFFFFFu)) { px[p1] = 0; stack[sp++] = p1; }
+        }
+        while (sp > 0) {
+            int p = stack[--sp];
+            int x = p % stride, y = p / stride;
+            int nb[4] = {x > 0 ? p - 1 : -1, x + 1 < rgba->w ? p + 1 : -1,
+                         y > 0 ? p - stride : -1,
+                         y + 1 < rgba->h ? p + stride : -1};
+            for (int k = 0; k < 4; k++) {
+                int q = nb[k];
+                if (q < 0)
+                    continue;
+                if ((px[q] & 0xFF000000u) && !(px[q] & 0x00FFFFFFu)) {
+                    px[q] = 0;
+                    stack[sp++] = q;
+                }
+            }
+        }
+        free(stack);
     }
     int mag = 0;
     for (int i = 0; i < total; i++) {
@@ -402,7 +427,10 @@ static void load_comp(Scene *s, Comp *c)
     if (surf) {
         int tw = 0, th = 0;
         bool mag = false;
-        bool key_black = (c->cls == CC_WYSUN || c->cls == CC_ANIM);
+        /* Animations have a legacy black backdrop; crayons instead have a
+           precise silhouette mask (the black graphite tip and dots are part
+           of the artwork, so a colour key would erase them). */
+        bool key_black = (c->cls == CC_ANIM);
         c->tex = texture_from_surface(s->renderer, surf, &tw, &th, &mag, key_black);
         SDL_DestroySurface(surf);
         if (c->tex) {
@@ -425,7 +453,8 @@ static void load_comp(Scene *s, Comp *c)
         c->mask = mask_from_blob(maskv, &c->mask_w, &c->mask_h, true, &shape);
         c->mask_shape = shape;
     }
-    if (c->cls == CC_MAPOWANIE || c->cls == CC_PRZESUN || c->mask_shape)
+    if (c->cls == CC_MAPOWANIE || c->cls == CC_PRZESUN ||
+        c->cls == CC_WYSUN || c->mask_shape)
         apply_mask_alpha(s, c);
 
     /* Embedded WAVs. */

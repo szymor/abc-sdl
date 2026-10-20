@@ -186,9 +186,11 @@ Requested fixes that are active by default:
 * **Puzzle board:** the `p01…p14` slots are filled with their VCL `Color` and
   a black grid, matching the original red board instead of showing the word
   picture through the cells.
-* **Transparency:** the train strip and the pencil toolbar use their masks /
-  black key so the scenery shows through; shape masks (e.g. the pineapple in
-  letter A) are applied as alpha.
+* **Transparency:** the train strip and the pencil toolbar use their 1-bpp
+  silhouette masks as alpha (this preserves the crayons' graphite tips and
+  black dots); shape masks (e.g. the pineapple in letter A) are applied the
+  same way. Animation backdrops remove only border-connected black, so
+  interior black artwork is kept.
 * **Task instructions:** entering a game scene plays the same spoken cue as
   its HELP pencil (`WAV/01.WAV`, `02.WAV`, …), and HELP now reliably replays
   it instead of the generic sound. The cue is restarted rather than layered.
