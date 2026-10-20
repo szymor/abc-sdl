@@ -1,7 +1,10 @@
-# A puzzle piece assigned to the wrong slot turns grayscale.
+# A puzzle piece assigned to the wrong slot returns to its tray frame.
 scene 11002
 wait 100
 click 246 449        # select k01
 click 224 53         # p02 -> wrong slot
 wait 150
+dump
+click 246 449        # select it again: normal colours, no stuck gray
+wait 100
 dump

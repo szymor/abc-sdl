@@ -268,7 +268,6 @@ static void reset_game(Scene *s)
         Comp *c = &s->comps[i];
         c->state = ST_NORMAL;
         c->found = c->placed = c->selected = false;
-        c->wrong = false;
         c->hover_lock = false;
         c->hover_wave_pending = false;
         c->anim_playing = false;
@@ -555,11 +554,14 @@ static bool puzzle_place(Scene *s, int piece_idx, Comp *slot)
     int slot_idx = comp_num(slot, 'p');
     if (slot_idx != piece_idx)
         return false;
-    piece->left = slot->left;
-    piece->top = slot->top;
+    /* The placed frame has a transparent border; align the visible picture
+       content with the slot, not the frame's outer corner. */
+    piece->left = slot->left - piece->content_off_x;
+    piece->top = slot->top - piece->content_off_y;
+    piece->slot_w = slot->width;
+    piece->slot_h = slot->height;
     piece->state = ST_ABNORMAL;
     piece->placed = true;
-    piece->wrong = false;
     piece->hover_lock = true;
     s->found_count++;
     /* Short placement click per piece; the long congratulation cue is only
@@ -571,14 +573,17 @@ static bool puzzle_place(Scene *s, int piece_idx, Comp *slot)
     return true;
 }
 
-static void mark_piece_wrong(Scene *s, Comp *piece)
+static void revert_piece_to_tray(Scene *s, Comp *piece)
 {
+    (void)s;
     if (!piece)
         return;
-    piece->wrong = true;
-    comp_make_gray(s, piece);
+    /* Wrong assignment does not disable/gray the piece: it simply returns
+       to its previous (tray) visual state and remains retryable. */
+    piece->state = ST_NORMAL;
+    piece->hover_wave_pending = false;
     if (getenv("ABC_DEBUG"))
-        fprintf(stderr, "piece %s assigned wrong -> gray\n", piece->name);
+        fprintf(stderr, "piece %s wrong -> tray state\n", piece->name);
 }
 
 static bool puzzle_click(Scene *s, int x, int y, Comp *hit)
@@ -590,7 +595,9 @@ static bool puzzle_click(Scene *s, int x, int y, Comp *hit)
             if (k)
                 k->selected = (comp_num(k, 'k') == s->selected_idx);
         }
-        click_visual(s, hit);
+        /* Selecting a piece must not switch it to the "placed" frame. */
+        hit->state = ST_NORMAL;
+        comp_play_click(s, hit);
         return true;
     }
     /* Any slot under the cursor. */
@@ -604,7 +611,7 @@ static bool puzzle_click(Scene *s, int x, int y, Comp *hit)
                     s->selected_idx = -1;
                     return true;
                 }
-                mark_piece_wrong(s, find_num(s, 'k', s->selected_idx));
+                revert_piece_to_tray(s, find_num(s, 'k', s->selected_idx));
                 play_bad(s);
                 s->selected_idx = -1;
             }
@@ -1328,7 +1335,9 @@ void modules_mouse_up(Scene *s, int x, int y)
                 puzzle_place(s, pi, p);
                 placed = true;
             } else {
-                mark_piece_wrong(s, piece);
+                revert_piece_to_tray(s, piece);
+                piece->left = piece->home_left;
+                piece->top = piece->home_top;
                 play_bad(s);
             }
             break;
@@ -1429,6 +1438,15 @@ void modules_render_overlay(Scene *s)
                 comp_rect(s, k, &rk);
                 outline_rect(r, (SDL_Rect){(int)rk.x, (int)rk.y, (int)rk.w, (int)rk.h},
                              255, 255, 255, 2);
+            }
+        }
+        break;
+    case 11:
+        if (s->selected_idx > 0) {
+            Comp *p = find_num(s, 'k', s->selected_idx);
+            if (p) {
+                SDL_Rect rc = clamped_rect(s, p);
+                outline_rect(r, rc, 255, 240, 80, 2);
             }
         }
         break;

@@ -359,14 +359,14 @@ static void apply_mask_alpha(Scene *s, Comp *c)
     c->tex = tex;
 }
 
-/* Build a grayscale copy of a sprite for the "wrong piece" state. */
-void comp_make_gray(Scene *s, Comp *c)
+/* Locate the visible picture content inside the placed frame.  Puzzle-piece
+   sheets have a transparent border in their tray colour; placing the frame
+   at the slot corner would shift the content by that border (2-4 px). */
+static void compute_piece_content(Comp *c)
 {
-    if (!c || c->gray_tex || !c->src)
-        return;
     DfmValue *bmp = dfm_prop(c->src, "_BMP.Data");
     if (!bmp || bmp->type != DFM_BIN)
-        bmp = dfm_prop(c->src, "Picture.Data");
+        return;
     SDL_Surface *surf = bmp_surface(bmp);
     if (!surf)
         return;
@@ -376,27 +376,31 @@ void comp_make_gray(Scene *s, Comp *c)
         return;
     uint32_t *px = rgba->pixels;
     int stride = rgba->pitch / 4;
+    int frames = c->frame_count > 0 ? c->frame_count : 1;
+    int fw = rgba->w / frames;
+    int fi = c->abnormal > 0 ? c->abnormal - 1 : 0;
+    if (fi < 0 || fi >= frames)
+        fi = 0;
     uint32_t corner = px[(rgba->h - 1) * stride];
+    int minx = fw, miny = rgba->h;
     for (int y = 0; y < rgba->h; y++) {
-        for (int x = 0; x < rgba->w; x++) {
-            int i = y * stride + x;
-            uint32_t p = px[i];
-            if (c->key_corner && (p & 0x00FFFFFFu) == (corner & 0x00FFFFFFu)) {
-                px[i] = 0;
-                continue;
-            }
-            if (p & 0xFF000000u) {
-                int r = (p >> 16) & 0xFF, g = (p >> 8) & 0xFF, b = p & 0xFF;
-                int lum = (r * 30 + g * 59 + b * 11) / 100;
-                px[i] = 0xFF000000u | ((uint32_t)lum << 16) |
-                        ((uint32_t)lum << 8) | (uint32_t)lum;
+        for (int x = fi * fw; x < (fi + 1) * fw; x++) {
+            uint32_t p = px[y * stride + x];
+            if ((p & 0xFF000000u) &&
+                (p & 0x00FFFFFFu) != (corner & 0x00FFFFFFu)) {
+                if (x - fi * fw < minx) minx = x - fi * fw;
+                if (y < miny) miny = y;
             }
         }
     }
-    c->gray_tex = SDL_CreateTextureFromSurface(s->renderer, rgba);
+    if (minx == fw && miny == rgba->h) {
+        c->content_off_x = 0;
+        c->content_off_y = 0;
+    } else {
+        c->content_off_x = minx;
+        c->content_off_y = miny;
+    }
     SDL_DestroySurface(rgba);
-    if (c->gray_tex)
-        SDL_SetTextureScaleMode(c->gray_tex, SDL_SCALEMODE_NEAREST);
 }
 
 static void load_comp(Scene *s, Comp *c)
@@ -485,6 +489,8 @@ static void load_comp(Scene *s, Comp *c)
                          c->name[0] == 'k' && isdigit((unsigned char)c->name[1]));
         c->tex = texture_from_surface(s->renderer, surf, &tw, &th, &mag,
                                       key_black, c->key_corner);
+        if (c->tex && c->key_corner)
+            compute_piece_content(c);
         SDL_DestroySurface(surf);
         if (c->tex) {
             c->tex_w = tw;
@@ -767,8 +773,6 @@ static void comp_unload(Comp *c)
 {
     if (c->tex)
         SDL_DestroyTexture(c->tex);
-    if (c->gray_tex)
-        SDL_DestroyTexture(c->gray_tex);
     free(c->mask);
     free(c->collision);
     if (c->wav_normal) audio_free_mem(c->wav_normal);
@@ -1249,8 +1253,16 @@ static void render_comp(Scene *s, Comp *c)
         dst.w = (float)c->width;
         dst.h = (float)c->height;
     }
-    SDL_Texture *draw_tex = (c->wrong && c->gray_tex) ? c->gray_tex : c->tex;
-    SDL_RenderTexture(s->renderer, draw_tex, &src, &dst);
+    bool clip = (s->module == 11 && c->placed && c->slot_w > 0 && c->slot_h > 0);
+    if (clip) {
+        SDL_Rect cr = {(int)dst.x + c->content_off_x,
+                       (int)dst.y + c->content_off_y,
+                       c->slot_w, c->slot_h};
+        SDL_SetRenderClipRect(s->renderer, &cr);
+    }
+    SDL_RenderTexture(s->renderer, c->tex, &src, &dst);
+    if (clip)
+        SDL_SetRenderClipRect(s->renderer, NULL);
 }
 
 void scene_render(Scene *s)
@@ -1264,6 +1276,17 @@ void scene_render(Scene *s)
         Comp *c = &s->comps[i];
         if (s->module == 10 && c->cls == CC_IMAGE)
             continue; /* replaced by the paint canvas */
+        if (s->module == 11 && c->has_color && c->cls == CC_ZAMIEN &&
+            c->name[0] == 'p' && isdigit((unsigned char)c->name[1])) {
+            /* Once the matching piece is placed, drop the red cell and its
+               grid border so the picture shows through around the piece. */
+            int idx = atoi(c->name + 1);
+            char kn[8];
+            snprintf(kn, sizeof(kn), "k%02d", idx);
+            Comp *k = scene_find(s, kn);
+            if (k && k->placed)
+                continue;
+        }
         render_comp(s, c);
     }
 

@@ -199,10 +199,14 @@ Requested fixes that are active by default:
 * **Puzzle feedback:** placing each piece plays a short placement click; the
   long spoken congratulation (`_WaveLicznik`, `02a.wav`) plays only once,
   when the last piece is in place. A piece dropped on the wrong slot returns
-  to the tray in a generated grayscale texture so the mistake is visible.
-* **Puzzle borders:** the piece sheets use their per-scene corner colour as
-  the VCL transparent colour, so the pink/purple/green borders no longer show
-  between placed pieces; the completed picture is clean.
+  to its normal tray frame and stays retryable; clicking it again selects it
+  and restores normal interaction (no permanent gray state).
+* **Puzzle borders and alignment:** the piece sheets use their per-scene
+  corner colour as the VCL transparent colour, so the pink/purple/green
+  borders no longer show between placed pieces. The placed frame's transparent
+  border is compensated by its measured content offset, and the piece is
+  clipped to its slot, so picture chunks line up instead of shifting by
+  2–4 px.
 * **One voice at a time:** spoken cues are exclusive — starting a new speech
   cue stops the previous speech cue. Choosing an item therefore cuts the
   rules explanation. Non-speech effects are allowed to mix over speech: the

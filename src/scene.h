@@ -51,8 +51,9 @@ typedef struct Comp {
     uint32_t color;
 
     SDL_Texture *tex;
-    SDL_Texture *gray_tex;
     int tex_w, tex_h, frame_w, frame_h, frame_count;
+    int content_off_x, content_off_y;
+    int slot_w, slot_h;
     bool key_magenta;
     bool key_corner;
 
@@ -94,7 +95,7 @@ typedef struct Comp {
     int col_w, col_h;
 
     /* Game bookkeeping */
-    bool found, placed, selected, wrong, hover_lock, correct, disabled;
+    bool found, placed, selected, hover_lock, correct, disabled;
     bool hover_wave_pending;
     uint64_t hover_wave_at;
     int home_left, home_top;
@@ -194,7 +195,6 @@ bool comp_contains(Scene *s, Comp *c, int x, int y);
 void comp_play_click(Scene *s, Comp *c);
 void comp_set_state(Scene *s, Comp *c, CompState st);
 void comp_anim_start(Scene *s, Comp *c, bool show);
-void comp_make_gray(Scene *s, Comp *c);
 void scene_request(Scene *s, int id);
 void scene_complete(Scene *s, int delay_ms);
 void scene_toast(Scene *s, const char *msg, int ms);

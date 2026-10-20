@@ -127,14 +127,15 @@ else
     echo "   reset audio test skipped (no audio device)" >&2
 fi
 
-echo "== wrong puzzle piece grays out"
+echo "== wrong puzzle piece returns to tray"
 if ABC_DEBUG=1 SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
-        --script "$ROOT/tests/gray.txt" > "$TMP/gray.log" 2>&1; then
-    grep -q "piece k01 assigned wrong -> gray" "$TMP/gray.log"
-    grep -q "scene=11002 .*found=0" "$TMP/gray.log"
-    echo "   misplaced piece switches to its grayscale texture"
+        --script "$ROOT/tests/gray.txt" > "$TMP/wrongpiece.log" 2>&1; then
+    grep -q "piece k01 wrong -> tray state" "$TMP/wrongpiece.log"
+    grep -q "scene=11002 .*found=0" "$TMP/wrongpiece.log"
+    grep -q "sel=1" "$TMP/wrongpiece.log"
+    echo "   misplaced piece is back in its normal tray frame (retryable)"
 else
-    echo "   gray-piece test failed" >&2
+    echo "   wrong-piece test failed" >&2
     exit 1
 fi
 
