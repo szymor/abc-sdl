@@ -121,7 +121,8 @@ static SDL_Surface *bmp_surface(DfmValue *v)
     return SDL_LoadBMP_IO(io, true);
 }
 
-static SDL_Texture *texture_from_surface(SDL_Renderer *r, SDL_Surface *surf, int *w, int *h, bool *magenta, bool key_black)
+static SDL_Texture *texture_from_surface(SDL_Renderer *r, SDL_Surface *surf, int *w, int *h,
+                                         bool *magenta, bool key_black, bool key_corner)
 {
     SDL_Surface *rgba = SDL_ConvertSurface(surf, SDL_PIXELFORMAT_ARGB8888);
     if (!rgba)
@@ -133,6 +134,15 @@ static SDL_Texture *texture_from_surface(SDL_Renderer *r, SDL_Surface *surf, int
     int total = rgba->w * rgba->h;
     int stride = rgba->pitch / 4;
     uint32_t corner = px[(rgba->h - 1) * stride]; /* VCL transparent colour */
+    if (key_corner) {
+        /* Puzzle-piece sheets use the tray colour as the VCL transparent
+           colour; removing it deletes the pink/purple/green borders that
+           would otherwise show between placed pieces. */
+        for (int i = 0; i < total; i++) {
+            if ((px[i] & 0x00FFFFFFu) == (corner & 0x00FFFFFFu))
+                px[i] = 0;
+        }
+    }
     if (key_black && (corner & 0x00FFFFFFu) == 0) {
         /* Remove only the black backdrop connected to the sprite border.
            Interior pure-black details (dots, outlines) stay opaque. */
@@ -349,6 +359,46 @@ static void apply_mask_alpha(Scene *s, Comp *c)
     c->tex = tex;
 }
 
+/* Build a grayscale copy of a sprite for the "wrong piece" state. */
+void comp_make_gray(Scene *s, Comp *c)
+{
+    if (!c || c->gray_tex || !c->src)
+        return;
+    DfmValue *bmp = dfm_prop(c->src, "_BMP.Data");
+    if (!bmp || bmp->type != DFM_BIN)
+        bmp = dfm_prop(c->src, "Picture.Data");
+    SDL_Surface *surf = bmp_surface(bmp);
+    if (!surf)
+        return;
+    SDL_Surface *rgba = SDL_ConvertSurface(surf, SDL_PIXELFORMAT_ARGB8888);
+    SDL_DestroySurface(surf);
+    if (!rgba)
+        return;
+    uint32_t *px = rgba->pixels;
+    int stride = rgba->pitch / 4;
+    uint32_t corner = px[(rgba->h - 1) * stride];
+    for (int y = 0; y < rgba->h; y++) {
+        for (int x = 0; x < rgba->w; x++) {
+            int i = y * stride + x;
+            uint32_t p = px[i];
+            if (c->key_corner && (p & 0x00FFFFFFu) == (corner & 0x00FFFFFFu)) {
+                px[i] = 0;
+                continue;
+            }
+            if (p & 0xFF000000u) {
+                int r = (p >> 16) & 0xFF, g = (p >> 8) & 0xFF, b = p & 0xFF;
+                int lum = (r * 30 + g * 59 + b * 11) / 100;
+                px[i] = 0xFF000000u | ((uint32_t)lum << 16) |
+                        ((uint32_t)lum << 8) | (uint32_t)lum;
+            }
+        }
+    }
+    c->gray_tex = SDL_CreateTextureFromSurface(s->renderer, rgba);
+    SDL_DestroySurface(rgba);
+    if (c->gray_tex)
+        SDL_SetTextureScaleMode(c->gray_tex, SDL_SCALEMODE_NEAREST);
+}
+
 static void load_comp(Scene *s, Comp *c)
 {
     DfmComponent *src = c->src;
@@ -431,7 +481,10 @@ static void load_comp(Scene *s, Comp *c)
            precise silhouette mask (the black graphite tip and dots are part
            of the artwork, so a colour key would erase them). */
         bool key_black = (c->cls == CC_ANIM);
-        c->tex = texture_from_surface(s->renderer, surf, &tw, &th, &mag, key_black);
+        c->key_corner = (s->module == 11 && c->cls == CC_ZAMIEN &&
+                         c->name[0] == 'k' && isdigit((unsigned char)c->name[1]));
+        c->tex = texture_from_surface(s->renderer, surf, &tw, &th, &mag,
+                                      key_black, c->key_corner);
         SDL_DestroySurface(surf);
         if (c->tex) {
             c->tex_w = tw;
@@ -714,6 +767,8 @@ static void comp_unload(Comp *c)
 {
     if (c->tex)
         SDL_DestroyTexture(c->tex);
+    if (c->gray_tex)
+        SDL_DestroyTexture(c->gray_tex);
     free(c->mask);
     free(c->collision);
     if (c->wav_normal) audio_free_mem(c->wav_normal);
@@ -1194,7 +1249,8 @@ static void render_comp(Scene *s, Comp *c)
         dst.w = (float)c->width;
         dst.h = (float)c->height;
     }
-    SDL_RenderTexture(s->renderer, c->tex, &src, &dst);
+    SDL_Texture *draw_tex = (c->wrong && c->gray_tex) ? c->gray_tex : c->tex;
+    SDL_RenderTexture(s->renderer, draw_tex, &src, &dst);
 }
 
 void scene_render(Scene *s)

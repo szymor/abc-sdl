@@ -1,0 +1,7 @@
+# A puzzle piece assigned to the wrong slot turns grayscale.
+scene 11002
+wait 100
+click 246 449        # select k01
+click 224 53         # p02 -> wrong slot
+wait 150
+dump

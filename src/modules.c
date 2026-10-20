@@ -268,6 +268,7 @@ static void reset_game(Scene *s)
         Comp *c = &s->comps[i];
         c->state = ST_NORMAL;
         c->found = c->placed = c->selected = false;
+        c->wrong = false;
         c->hover_lock = false;
         c->hover_wave_pending = false;
         c->anim_playing = false;
@@ -558,6 +559,7 @@ static bool puzzle_place(Scene *s, int piece_idx, Comp *slot)
     piece->top = slot->top;
     piece->state = ST_ABNORMAL;
     piece->placed = true;
+    piece->wrong = false;
     piece->hover_lock = true;
     s->found_count++;
     /* Short placement click per piece; the long congratulation cue is only
@@ -567,6 +569,16 @@ static bool puzzle_place(Scene *s, int piece_idx, Comp *slot)
     if (s->found_count >= s->target_count)
         scene_complete(s, 1800);
     return true;
+}
+
+static void mark_piece_wrong(Scene *s, Comp *piece)
+{
+    if (!piece)
+        return;
+    piece->wrong = true;
+    comp_make_gray(s, piece);
+    if (getenv("ABC_DEBUG"))
+        fprintf(stderr, "piece %s assigned wrong -> gray\n", piece->name);
 }
 
 static bool puzzle_click(Scene *s, int x, int y, Comp *hit)
@@ -592,6 +604,7 @@ static bool puzzle_click(Scene *s, int x, int y, Comp *hit)
                     s->selected_idx = -1;
                     return true;
                 }
+                mark_piece_wrong(s, find_num(s, 'k', s->selected_idx));
                 play_bad(s);
                 s->selected_idx = -1;
             }
@@ -1315,6 +1328,7 @@ void modules_mouse_up(Scene *s, int x, int y)
                 puzzle_place(s, pi, p);
                 placed = true;
             } else {
+                mark_piece_wrong(s, piece);
                 play_bad(s);
             }
             break;
