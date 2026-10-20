@@ -207,6 +207,9 @@ Requested fixes that are active by default:
   `Aa` forms and the object. The syllable strip, letter highlights and object
   highlight are hover-only overlays: the title is shown whole at rest and
   separates into syllables (`CYM BAL KI`) only while the pointer is over it.
+  The syllable strip is a separate pre-rendered bitmap blitted at native size,
+  not runtime text; its lettering is slightly lighter than the baked title,
+  as on the disc.
 * **Puzzle borders and alignment:** the piece sheets use their per-scene
   corner colour as the VCL transparent colour, so the pink/purple/green
   borders no longer show between placed pieces. The placed frame's transparent
