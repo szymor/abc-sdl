@@ -260,6 +260,32 @@ void audio_play(MIX_Audio *a, float gain)
     MIX_PlayTrack(tracks[pick], 0);
 }
 
+void audio_play_sfx(MIX_Audio *a, float gain)
+{
+    if (!audio_enabled || !a)
+        return;
+    if (gain <= 0.0f)
+        gain = 1.0f;
+    /* Non-speech effects (wrong-answer buzz, counters) may play on top of a
+       spoken explanation.  Find an idle track; never stop the speech. */
+    int pick = -1;
+    for (int i = 0; i < AUDIO_TRACKS; i++) {
+        int idx = (next_track + i) % AUDIO_TRACKS;
+        if (tracks[idx] && MIX_GetTrackRemaining(tracks[idx]) <= 0) {
+            pick = idx;
+            break;
+        }
+    }
+    if (pick < 0)
+        pick = next_track;
+    next_track = (pick + 1) % AUDIO_TRACKS;
+    if (getenv("ABC_DEBUG"))
+        log_info("audio sfx (overlaps speech)");
+    MIX_SetTrackGain(tracks[pick], gain);
+    MIX_SetTrackAudio(tracks[pick], a);
+    MIX_PlayTrack(tracks[pick], 0);
+}
+
 void audio_stop_all(void)
 {
     if (!audio_enabled)

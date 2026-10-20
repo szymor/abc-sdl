@@ -30,7 +30,7 @@ The reverse-engineering specification this port is based on lives in
 | Spot the difference (Szczegoly) | complete — paired differences, highlights, completion |
 | Maze (Labirynt) | complete — 1-bpp collision map, cursor-following player, good/bad exits |
 | Zgadywanka 1–4 | complete — all 35 scenes, counters and feedback |
-| Audio | WAV one-shots + spoken task cues (SDL3_mixer), shuffled MIDI playlists (FluidSynth); only one spoken cue plays at a time, and cues stop on scene transitions |
+| Audio | WAV one-shots + spoken task cues (SDL3_mixer), shuffled MIDI playlists (FluidSynth); one spoken cue at a time, while short SFX such as the wrong-answer buzz may mix over speech |
 | Video (AVI) | complete — Cinepak/MSVideo1/Indeo3 decoded by FFmpeg into the `TEkran` rect, with audio |
 | Cursors (`PEDZEL`, `LIT_*`) | brush cursor extracted from `ABC.EXE`; the maze draws the word's letter as a sprite (the `LIT_*` resources are available in `src/cursors_data.h`) |
 | Printing | exports a PNG instead of GDI printing |
@@ -194,21 +194,24 @@ Requested fixes that are active by default:
 * **Task instructions:** entering a game scene plays the same spoken cue as
   its HELP pencil (`WAV/01.WAV`, `02.WAV`, …), and HELP now reliably replays
   it instead of the generic sound.
-* **One voice at a time:** every WAV cue is exclusive — starting a new one
-  stops the previous cue. Choosing an item in a task therefore cuts the
-  rules explanation. Pencil hover hints still play, but only after the
-  pointer has dwelt on the pencil for 250 ms, so a pointer passing through
-  (or already resting over the toolbar when a game opens) cannot interrupt
-  the instruction by accident. MIDI music is independent and continues.
+* **One voice at a time:** spoken cues are exclusive — starting a new speech
+  cue stops the previous speech cue. Choosing an item therefore cuts the
+  rules explanation. Non-speech effects are allowed to mix over speech: the
+  wrong-answer buzz is an SFX track, so a wrongly chosen item's spoken
+  explanation continues under the buzz. Pencil hover hints still play, but
+  only after the pointer has dwelt on the pencil for 250 ms. MIDI music is
+  independent and continues.
 * **Video/audio:** video frames are scheduled by PTS so long clips stay in
   sync with their audio; leaving a scene or closing a video stops its sound,
   and the old MIDI playlist is silenced and flushed before a new one starts.
 * **Activity completion:** a solved game now stays on its completed screen;
   the child leaves with the blue `kBack` pencil (or the train icon where
   present). There is no automatic return to the word scene.
-* **Correct-answer feedback:** Zgadywanka 1 plays the correct hotspot's cue
-  (`WAV/1d.WAV`, …) instead of the empty `waveK` player, so ADAPTER and the
-  other association pages give spoken feedback.
+* **Correct/wrong-answer feedback:** Zgadywanka 1 plays the selected
+  hotspot's spoken cue (`WAV/1d.WAV` for the correct record, `1a/1b/1c` for
+  the distractors) instead of the empty `waveK` player. The wrong-answer buzz
+  is mixed over the distractor's explanation, so the child hears both “what
+  this is” and the wrong feedback.
 
 Where the original data is ambiguous, the port uses the observable behaviour
 and documents the inference:

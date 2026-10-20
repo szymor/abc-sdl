@@ -119,10 +119,11 @@ static void play_count(Scene *s)
 
 static void play_bad(Scene *s)
 {
+    /* The buzz is a short SFX: it may play over a spoken explanation. */
     if (s->wav_bad)
-        audio_play(s->wav_bad, 1.0f);
+        audio_play_sfx(s->wav_bad, 0.7f);
     else if (s->wav_default)
-        audio_play(s->wav_default, 1.0f);
+        audio_play_sfx(s->wav_default, 0.6f);
 }
 
 static void make_paint_canvas(Scene *s)
@@ -765,8 +766,9 @@ static bool zg1_click(Scene *s, int x, int y, Comp *hit)
             return true;
         }
         if (zi > 0) {
-            /* One spoken cue at a time: the wrong-answer feedback replaces
-               the candidate cue instead of being layered over it. */
+            /* Speak the wrongly chosen item's explanation, with the short
+               wrong-answer buzz mixed on top (buzz is SFX, not speech). */
+            comp_play_click(s, hit);
             Comp *anim = scene_find(s, "AnimZle");
             if (anim)
                 comp_anim_start(s, anim, true);

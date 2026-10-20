@@ -113,6 +113,23 @@ else
     echo "   audio test skipped (no audio device/soundfont)" >&2
 fi
 
+echo "== wrong-answer speech + buzz"
+cat > "$TMP/wrong.txt" <<'EOF'
+scene 15001
+wait 200
+click 582 71
+wait 400
+dump
+EOF
+if ABC_DEBUG=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=dummy "$BIN" \
+        --data "$DATA" --script "$TMP/wrong.txt" > "$TMP/wrong.log" 2>&1 &&
+   grep -q "click z1 .*audio=yes" "$TMP/wrong.log" &&
+   grep -q "audio sfx (overlaps speech)" "$TMP/wrong.log"; then
+    echo "   wrong item explanation plays, buzz mixes over it"
+else
+    echo "   wrong-answer audio test skipped (no audio device)" >&2
+fi
+
 echo "== opt-in content fix"
 cat > "$TMP/fix.txt" <<'EOF'
 scene 3047
