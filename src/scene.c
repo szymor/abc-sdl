@@ -861,7 +861,11 @@ void comp_set_state(Scene *s, Comp *c, CompState st)
     if (c->state == st)
         return;
     c->state = st;
-    play_state_wave(s, c, st);
+    /* The pencil toolbar sits under the pointer when a game opens.  Its
+       hover auto-play cue would immediately cut the spoken task instruction,
+       so pencils only make a sound on an actual click. */
+    if (c->cls != CC_WYSUN)
+        play_state_wave(s, c, st);
 }
 
 void comp_play_click(Scene *s, Comp *c)

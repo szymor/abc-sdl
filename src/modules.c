@@ -765,7 +765,8 @@ static bool zg1_click(Scene *s, int x, int y, Comp *hit)
             return true;
         }
         if (zi > 0) {
-            comp_play_click(s, hit);
+            /* One spoken cue at a time: the wrong-answer feedback replaces
+               the candidate cue instead of being layered over it. */
             Comp *anim = scene_find(s, "AnimZle");
             if (anim)
                 comp_anim_start(s, anim, true);

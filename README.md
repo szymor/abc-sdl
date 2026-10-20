@@ -30,7 +30,7 @@ The reverse-engineering specification this port is based on lives in
 | Spot the difference (Szczegoly) | complete — paired differences, highlights, completion |
 | Maze (Labirynt) | complete — 1-bpp collision map, cursor-following player, good/bad exits |
 | Zgadywanka 1–4 | complete — all 35 scenes, counters and feedback |
-| Audio | WAV one-shots + spoken task cues (SDL3_mixer), shuffled MIDI playlists (FluidSynth); one-shots are stopped on scene transitions |
+| Audio | WAV one-shots + spoken task cues (SDL3_mixer), shuffled MIDI playlists (FluidSynth); only one spoken cue plays at a time, and cues stop on scene transitions |
 | Video (AVI) | complete — Cinepak/MSVideo1/Indeo3 decoded by FFmpeg into the `TEkran` rect, with audio |
 | Cursors (`PEDZEL`, `LIT_*`) | brush cursor extracted from `ABC.EXE`; the maze draws the word's letter as a sprite (the `LIT_*` resources are available in `src/cursors_data.h`) |
 | Printing | exports a PNG instead of GDI printing |
@@ -193,7 +193,12 @@ Requested fixes that are active by default:
   interior black artwork is kept.
 * **Task instructions:** entering a game scene plays the same spoken cue as
   its HELP pencil (`WAV/01.WAV`, `02.WAV`, …), and HELP now reliably replays
-  it instead of the generic sound. The cue is restarted rather than layered.
+  it instead of the generic sound.
+* **One voice at a time:** every WAV cue is exclusive — starting a new one
+  stops the previous cue. Choosing an item in a task therefore cuts the
+  rules explanation; the pencil toolbar is silent on hover so it cannot
+  interrupt the instruction merely by being under the pointer. MIDI music is
+  independent and continues.
 * **Video/audio:** video frames are scheduled by PTS so long clips stay in
   sync with their audio; leaving a scene or closing a video stops its sound,
   and the old MIDI playlist is silenced and flushed before a new one starts.

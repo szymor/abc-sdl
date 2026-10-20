@@ -105,8 +105,9 @@ echo "== task instruction and HELP audio"
 if ABC_DEBUG=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=dummy "$BIN" \
         --data "$DATA" --script "$ROOT/tests/help.txt" > "$TMP/help.log" 2>&1 &&
    grep -q "entry help 10005: audio" "$TMP/help.log" &&
-   grep -q "click kHelp .*audio=yes" "$TMP/help.log"; then
-    echo "   entry cue and HELP cue are played"
+   grep -q "click kHelp .*audio=yes" "$TMP/help.log" &&
+   grep -q "audio cue .*previous cue stopped" "$TMP/help.log"; then
+    echo "   entry cue and HELP cue are played exclusively"
 else
     echo "   audio test skipped (no audio device/soundfont)" >&2
 fi

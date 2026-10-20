@@ -241,18 +241,20 @@ void audio_play(MIX_Audio *a, float gain)
         return;
     if (gain <= 0.0f)
         gain = 1.0f;
-    /* Prefer a track that has finished. */
-    int pick = -1;
-    for (int i = 0; i < AUDIO_TRACKS; i++) {
-        int idx = (next_track + i) % AUDIO_TRACKS;
-        if (tracks[idx] && MIX_GetTrackRemaining(tracks[idx]) <= 0) {
-            pick = idx;
-            break;
-        }
+    /* Only one spoken cue at a time.  The original uses several players, but
+       the child should never hear the rules explanation and an item cue
+       simultaneously; starting a new cue interrupts the previous one.
+       MIDI playlists are managed separately and are not affected. */
+    audio_stop_all();
+    int pick = next_track;
+    next_track = (next_track + 1) % AUDIO_TRACKS;
+    if (getenv("ABC_DEBUG")) {
+        SDL_AudioSpec spec;
+        double dur = -1.0;
+        if (MIX_GetAudioFormat(a, &spec) && spec.freq > 0)
+            dur = (double)MIX_GetAudioDuration(a) / (double)spec.freq;
+        log_info("audio cue (%.1f s), previous cue stopped", dur);
     }
-    if (pick < 0)
-        pick = next_track;
-    next_track = (pick + 1) % AUDIO_TRACKS;
     MIX_SetTrackGain(tracks[pick], gain);
     MIX_SetTrackAudio(tracks[pick], a);
     MIX_PlayTrack(tracks[pick], 0);
