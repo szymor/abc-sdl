@@ -244,11 +244,18 @@ shot $TMP/word-letter.png
 move 116 164
 wait 200
 shot $TMP/word-object.png
+move 76 429
+wait 200
+shot $TMP/word-train.png
 scene 2003
 wait 100
+shot $TMP/letter-rest.png
 move 382 167
 wait 200
 shot $TMP/letter-hover.png
+move 75 428
+wait 200
+shot $TMP/letter-train.png
 EOF
 ABC_DEBUG=1 SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
     --script "$TMP/wordhover.txt" > "$TMP/wordhover.log" 2>&1
@@ -273,7 +280,15 @@ if cmp -s "$TMP/word-rest.png" "$TMP/word-object.png"; then
     echo "object hover did not show the highlight overlay" >&2
     exit 1
 fi
-echo "   native 640x480 background, no doubled baked sprites, hover overlays aligned"
+if cmp -s "$TMP/word-rest.png" "$TMP/word-train.png"; then
+    echo "word train did not grow on hover" >&2
+    exit 1
+fi
+if cmp -s "$TMP/letter-rest.png" "$TMP/letter-train.png"; then
+    echo "letter train did not grow on hover" >&2
+    exit 1
+fi
+echo "   native background; title/letters/object/train hover overlays aligned"
 
 echo "== video (best effort)"
 mkdir -p "$ROOT/tests/out"

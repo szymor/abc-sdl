@@ -393,7 +393,8 @@ void modules_setup(Scene *s, const char *data_root)
        the overlays only appear while the pointer is over them (the original
        shows the whole title, then CYM-BAL-KI on hover). */
     if (s->module == 3) {
-        static const char *overlays[] = {"sylaby", "duzaLit", "malaLit", "rzecz", NULL};
+        static const char *overlays[] = {"sylaby", "duzaLit", "malaLit",
+                                         "rzecz", "ciuchcia", NULL};
         for (int i = 0; overlays[i]; i++) {
             Comp *c = scene_find(s, overlays[i]);
             if (c)
@@ -404,7 +405,7 @@ void modules_setup(Scene *s, const char *data_root)
            shifted edge, so keep them clickable but invisible. */
         static const char *baked[] = {"browWyrL", "browWyrP", "KlTabl",
                                       "KlKamera", "KlAparat", "KlGra",
-                                      "ciuchcia", NULL};
+                                      NULL};
         for (int i = 0; baked[i]; i++) {
             Comp *c = scene_find(s, baked[i]);
             if (c) {
