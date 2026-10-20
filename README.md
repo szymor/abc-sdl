@@ -214,11 +214,13 @@ Requested fixes that are active by default:
   rules explanation. Non-speech effects are allowed to mix over speech: the
   wrong-answer buzz is an SFX track, so a wrongly chosen item's spoken
   explanation continues under the buzz. Pencil hover hints still play, but
-  only after the pointer has dwelt on the pencil for 250 ms. MIDI music is
-  independent and continues.
+  only after the pointer has dwelt on the pencil for 250 ms. MIDI music runs
+  independently of speech and SFX.
 * **Video/audio:** video frames are scheduled by PTS so long clips stay in
-  sync with their audio; leaving a scene or closing a video stops its sound,
-  and the old MIDI playlist is silenced and flushed before a new one starts.
+  sync with their audio; leaving a scene or closing a video stops its sound.
+  TV and credits videos pause the background MIDI playlist (including any
+  buffered synth notes) and resume it at the same tick when playback ends or
+  the clip is dismissed.
 * **Activity completion:** a solved game now stays on its completed screen;
   the child leaves with the blue `kBack` pencil (or the train icon where
   present). There is no automatic return to the word scene.
@@ -316,8 +318,9 @@ clip (`AUTORZY.AVI`) plays full-screen from the train hub's rabbit. The
 stream's audio is decoded once to 44.1 kHz stereo PCM and played through the
 same mixer as the WAV one-shots. Frame presentation is driven by the stream's
 PTS (not a fixed frame counter), so long clips remain in sync; closing the
-video or changing scenes stops its audio. When FFmpeg is unavailable at build
-time the old placeholder card is used instead.
+video or changing scenes stops its audio. TV and credits clips pause the
+scene's MIDI playlist while they play and resume it afterwards. When FFmpeg is
+unavailable at build time the old placeholder card is used instead.
 
 ## Cursors
 

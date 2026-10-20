@@ -1164,7 +1164,7 @@ static bool train_click(Scene *s, int x, int y, Comp *hit)
             if (s->video) {
                 /* The credits clip has its own soundtrack; the train music
                    resumes when the clip ends or is dismissed. */
-                audio_music_stop();
+                audio_music_pause();
                 s->video_stop_music = true;
             }
         }
@@ -1238,6 +1238,7 @@ static bool tv_click(Scene *s, int x, int y, Comp *hit)
         video_close(s->video);
         s->video = NULL;
     }
+    bool music_active = audio_music_signature() != NULL;
     s->video = video_open(s->renderer, path);
     s->video_fullscreen = false;
     if (!s->video) {
@@ -1247,6 +1248,13 @@ static bool tv_click(Scene *s, int x, int y, Comp *hit)
         snprintf(s->video_label, sizeof(s->video_label), "%s: %s", label,
                  base ? base + 1 : which);
         s->video_until = SDL_GetTicks() + 3000;
+    } else if (music_active) {
+        /* TV clips carry their own soundtrack; pause the scene music until
+           playback ends or the clip is dismissed. */
+        audio_music_pause();
+        s->video_stop_music = true;
+        if (getenv("ABC_DEBUG"))
+            log_info("TV video: background music paused");
     }
     free(path);
     return true;

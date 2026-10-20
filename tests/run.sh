@@ -200,4 +200,36 @@ else
     echo "   video test skipped/failed (FFmpeg missing?)" >&2
 fi
 
+echo "== TV video pauses background music"
+cat > "$TMP/tvmusic.txt" <<'EOF'
+scene 3016
+wait 100
+click 280 400
+wait 700
+dump
+click 300 300
+wait 300
+dump
+click 280 400
+wait 5500
+dump
+EOF
+if ABC_DEBUG=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=dummy "$BIN" \
+        --data "$DATA" --script "$TMP/tvmusic.txt" > "$TMP/tvmusic.log" 2>&1; then
+    if grep -q "video frame" "$TMP/tvmusic.log"; then
+        PAUSED=$(grep -c "TV video: background music paused" "$TMP/tvmusic.log" || true)
+        RESTORED=$(grep -c "video ended: background music restored" "$TMP/tvmusic.log" || true)
+        if [ "$PAUSED" -lt 2 ] || [ "$RESTORED" -lt 2 ]; then
+            echo "video did not pause/restore background music (paused=$PAUSED restored=$RESTORED)" >&2
+            grep -E "music|video ended" "$TMP/tvmusic.log" >&2
+            exit 1
+        fi
+        echo "   music paused for TV clips and resumed afterwards"
+    else
+        echo "   TV music test skipped (video unsupported)" >&2
+    fi
+else
+    echo "   TV music test skipped/failed" >&2
+fi
+
 echo "all checks passed"

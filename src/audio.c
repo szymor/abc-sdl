@@ -24,8 +24,10 @@ static CacheEntry *cache = NULL;
 static int cache_count = 0, cache_cap = 0;
 
 static char *music_sig = NULL;
+static bool music_paused = false;
 
 #ifdef HAVE_FLUIDSYNTH
+static int music_pause_tick = 0;
 static fluid_settings_t *fs_settings = NULL;
 static fluid_synth_t *fs_synth = NULL;
 static fluid_player_t *fs_player = NULL;
@@ -192,6 +194,7 @@ void audio_shutdown(void)
     }
     free(music_sig);
     music_sig = NULL;
+    music_paused = false;
 }
 
 MIX_Audio *audio_load_file(const char *path)
@@ -310,8 +313,55 @@ void audio_music_stop(void)
         fs_player = NULL;
     }
 #endif
+    music_paused = false;
     free(music_sig);
     music_sig = NULL;
+}
+
+void audio_music_pause(void)
+{
+#ifdef HAVE_FLUIDSYNTH
+    if (!fs_player || music_paused)
+        return;
+    int tick = fluid_player_get_current_tick(fs_player);
+    music_pause_tick = tick > 0 ? tick : 0;
+    music_paused = true;
+    fluid_player_stop(fs_player);
+    if (fs_synth)
+        fluid_synth_all_sounds_off(fs_synth, -1);
+    if (fs_stream) {
+        SDL_LockAudioStream(fs_stream);
+        SDL_ClearAudioStream(fs_stream);
+        SDL_UnlockAudioStream(fs_stream);
+    }
+    log_info("music paused at tick %d", music_pause_tick);
+#endif
+}
+
+bool audio_music_resume(void)
+{
+#ifdef HAVE_FLUIDSYNTH
+    if (!music_paused || !fs_player) {
+        music_paused = false;
+        return false;
+    }
+    if (fs_synth)
+        fluid_synth_all_sounds_off(fs_synth, -1);
+    if (fs_stream) {
+        SDL_LockAudioStream(fs_stream);
+        SDL_ClearAudioStream(fs_stream);
+        SDL_UnlockAudioStream(fs_stream);
+    }
+    fluid_player_seek(fs_player, music_pause_tick);
+    int ret = fluid_player_play(fs_player);
+    music_paused = false;
+    if (ret != FLUID_OK)
+        return false;
+    log_info("music resumed at tick %d", music_pause_tick);
+    return true;
+#else
+    return false;
+#endif
 }
 
 const char *audio_music_signature(void)
@@ -323,10 +373,14 @@ void audio_music_play(const char *const *paths, int count, bool random_loop, con
 {
     if (!paths || count <= 0)
         return;
-    if (music_sig && signature && strcmp(music_sig, signature) == 0)
+    if (music_sig && signature && strcmp(music_sig, signature) == 0) {
+        if (music_paused)
+            audio_music_resume();
         return;
+    }
 #ifdef HAVE_FLUIDSYNTH
     if (!fs_ok) {
+        music_paused = false;
         free(music_sig);
         music_sig = signature ? xstrdup(signature) : NULL;
         return;
@@ -336,6 +390,7 @@ void audio_music_play(const char *const *paths, int count, bool random_loop, con
         delete_fluid_player(fs_player);
         fs_player = NULL;
     }
+    music_paused = false;
     /* Kill residual notes and buffered audio from the previous playlist. */
     fluid_synth_all_sounds_off(fs_synth, -1);
     if (fs_stream) {

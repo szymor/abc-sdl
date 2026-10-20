@@ -1171,12 +1171,21 @@ static void restart_scene_music(Scene *s)
     if (!s->video_stop_music)
         return;
     s->video_stop_music = false;
+    /* Resume the playlist at the point where the clip interrupted it. */
+    if (audio_music_resume()) {
+        if (getenv("ABC_DEBUG"))
+            log_info("video ended: background music restored");
+        return;
+    }
+    audio_music_stop();
     if (s->nmusic <= 0)
         return;
     const char *paths[4];
     for (int i = 0; i < s->nmusic; i++)
         paths[i] = s->music_paths[i];
     audio_music_play(paths, s->nmusic, true, s->music_sig);
+    if (getenv("ABC_DEBUG"))
+        log_info("video ended: background music restored (restarted)");
 }
 
 void scene_update(Scene *s, float dt)
