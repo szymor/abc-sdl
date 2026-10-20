@@ -939,7 +939,11 @@ void scene_complete(Scene *s, int delay_ms)
     s->complete = true;
     s->complete_at = SDL_GetTicks();
     s->complete_delay_ms = delay_ms;
-    if (s->wav_ok)
+    /* Puzzle's _WaveLicznik is the long spoken congratulation; it belongs
+       at the end, not on each placed piece. */
+    if (s->module == 11 && s->wav_count)
+        audio_play(s->wav_count, 1.0f);
+    else if (s->wav_ok)
         audio_play(s->wav_ok, 1.0f);
     else if (s->wav_count)
         audio_play(s->wav_count, 1.0f);

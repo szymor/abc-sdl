@@ -1,0 +1,8 @@
+# kReset must reset and speak the rules, not repeat its hover phrase.
+scene 10005
+wait 200
+move 560 400
+wait 800
+click 545 430
+wait 400
+dump

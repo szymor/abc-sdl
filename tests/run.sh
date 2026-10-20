@@ -113,6 +113,31 @@ else
     echo "   audio test skipped (no audio device/soundfont)" >&2
 fi
 
+echo "== reset explains the rules"
+if ABC_DEBUG=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=dummy "$BIN" \
+        --data "$DATA" --script "$ROOT/tests/reset.txt" > "$TMP/reset.log" 2>&1; then
+    grep -q "reset kReset -> rules cue" "$TMP/reset.log"
+    if grep -q "click kReset" "$TMP/reset.log"; then
+        echo "kReset still replays its hover phrase!" >&2
+        exit 1
+    fi
+    [ "$(grep -c "audio cue (6.1" "$TMP/reset.log")" -ge 2 ]
+    echo "   reset works and speaks the rules cue (no duplicate hover phrase)"
+else
+    echo "   reset audio test skipped (no audio device)" >&2
+fi
+
+echo "== puzzle congratulation only at the end"
+if ABC_DEBUG=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=dummy "$BIN" \
+        --data "$DATA" --script "$ROOT/tests/puzzle_audio.txt" > "$TMP/puzzle.log" 2>&1; then
+    [ "$(grep -c "audio cue (4.9" "$TMP/puzzle.log")" -eq 1 ]
+    [ "$(grep -c "audio cue (0.1" "$TMP/puzzle.log")" -ge 5 ]
+    grep -q "complete=1" "$TMP/puzzle.log"
+    echo "   short placement click per piece, one congratulation at completion"
+else
+    echo "   puzzle audio test skipped (no audio device)" >&2
+fi
+
 echo "== wrong-answer speech + buzz"
 cat > "$TMP/wrong.txt" <<'EOF'
 scene 15001

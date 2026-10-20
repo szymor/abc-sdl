@@ -1,0 +1,61 @@
+scene 11002
+wait 100
+move 246 449
+down 246 449
+move 266 429
+move 83 53
+up 83 53
+move 97 434
+down 97 434
+move 117 414
+move 224 53
+up 224 53
+move 484 236
+down 484 236
+move 504 216
+move 358 53
+up 358 53
+move 588 183
+down 588 183
+move 608 163
+move 59 135
+up 59 135
+move 492 52
+down 492 52
+move 512 32
+move 134 124
+up 134 124
+move 87 349
+down 87 349
+move 107 329
+move 243 124
+up 243 124
+move 493 151
+down 493 151
+move 513 131
+move 361 130
+up 361 130
+move 199 351
+down 199 351
+move 219 331
+move 59 234
+up 59 234
+move 588 66
+down 588 66
+move 608 46
+move 130 224
+up 130 224
+move 366 360
+down 366 360
+move 386 340
+move 208 224
+up 208 224
+move 279 360
+down 279 360
+move 299 340
+move 281 224
+up 281 224
+dump
+wait 2200
+dump
+wait 500

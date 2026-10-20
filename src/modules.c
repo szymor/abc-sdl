@@ -117,6 +117,18 @@ static void play_count(Scene *s)
         audio_play(s->wav_count, 1.0f);
 }
 
+/* The task rules are the same cue HELP plays; kReset replays it after a
+   reset instead of repeating kReset's own hover phrase. */
+static void play_rules_cue(Scene *s)
+{
+    Comp *help = scene_find(s, "kHelp");
+    if (help) {
+        help->hover_wave_pending = false;
+        if (help->wav_click)
+            audio_play(help->wav_click, 1.0f);
+    }
+}
+
 static void play_bad(Scene *s)
 {
     /* The buzz is a short SFX: it may play over a spoken explanation. */
@@ -257,6 +269,7 @@ static void reset_game(Scene *s)
         c->state = ST_NORMAL;
         c->found = c->placed = c->selected = false;
         c->hover_lock = false;
+        c->hover_wave_pending = false;
         c->anim_playing = false;
         c->visible = c->visible0;
         if (c->cls == CC_ZAMIEN || c->cls == CC_WYSUN) {
@@ -547,7 +560,10 @@ static bool puzzle_place(Scene *s, int piece_idx, Comp *slot)
     piece->placed = true;
     piece->hover_lock = true;
     s->found_count++;
-    play_count(s);
+    /* Short placement click per piece; the long congratulation cue is only
+       played when the whole puzzle is complete (see scene_complete). */
+    if (s->wav_select)
+        audio_play(s->wav_select, 0.8f);
     if (s->found_count >= s->target_count)
         scene_complete(s, 1800);
     return true;
@@ -1316,8 +1332,15 @@ bool modules_click(Scene *s, int x, int y, Comp *hit)
 {
     if (s->module >= 10) {
         if (hit && str_ieq(hit->name, "kReset")) {
-            comp_play_click(s, hit);
+            hit->hover_wave_pending = false;
             reset_game(s);
+            /* Keep the pencil in its pressed state while the pointer is still
+               on it, otherwise the next hover frame would queue its phrase and
+               cut the rules cue.  Moving away and back re-arms the hint. */
+            hit->state = ST_ABNORMAL;
+            play_rules_cue(s);
+            if (getenv("ABC_DEBUG"))
+                fprintf(stderr, "reset kReset -> rules cue\n");
             return true;
         }
         if (hit && str_ieq(hit->name, "kPrint")) {
