@@ -83,12 +83,13 @@ grep -q "scene=3026" "$TMP/games.log"   # Zgadywanka 4 kBack
 grep -q "scene=3016" "$TMP/games.log"   # Labirynt kBack
 echo "   $COMPLETE counter completions; puzzle, maze and all word returns verified"
 
-echo "== YETI navigation fix"
-SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
+echo "== YETI navigation"
+ABC_DEBUG=1 SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
     --script "$ROOT/tests/yeti.txt" > "$TMP/yeti.log" 2>&1
-grep -q "scene=2023" "$TMP/yeti.log"
-grep -q "scene=3135" "$TMP/yeti.log"
-echo "   arrows reach the Y page, YETI is still reachable"
+grep -q "YETI word arrows disabled" "$TMP/yeti.log"
+[ "$(grep -c "scene=3135" "$TMP/yeti.log")" -eq 2 ]
+[ "$(grep -c "scene=2023" "$TMP/yeti.log")" -eq 1 ]
+echo "   YETI arrows and bogus Y hotspots are inactive; YETI is still reachable"
 
 echo "== absent/reused clips are ignored"
 cat > "$TMP/media.txt" <<'EOF'

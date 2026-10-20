@@ -1,5 +1,6 @@
-# YETI navigation fix: word arrows go to the Y letter page, and the
-# YETI object is still reachable from that page.
+# YETI has no neighbouring Y word: its two word arrows are inactive.
+# The YETI object is still reachable from the Y letter page, and the bogus
+# fallback hotspots there stay inactive.
 scene 3135
 wait 100
 click 610 30
@@ -7,6 +8,9 @@ wait 150
 dump
 scene 2023
 wait 100
+click 243 67
+wait 150
+dump
 move 472 197
 wait 250
 click 472 197

@@ -178,9 +178,11 @@ navigation/media fixes listed below:
 
 Requested fixes that are active by default:
 
-* **YETI navigation:** the YETI word screen's two arrows now lead back to the
-  Y letter playground (2023) instead of reloading 3135, and the six bogus
-  fallback hotspots in 2023 are hidden.
+* **YETI navigation:** YETI is the only Y word, so its two arrow hotspots are
+  inactive instead of inventing a destination (the shipped data points them
+  back at 3135). The arrow artwork is baked into `tlo`; it is left visible,
+  but the controls cannot be clicked. The six bogus fallback hotspots in the Y
+  letter scene (2023) are hidden and inactive.
 * **Absent/reused clips:** a film/photo button is enabled only if the clip
   belonging to that word (`<word>_1.AVI` / `<word>_2.AVI`) exists. This
   disables `4_1`, `46_2`, `135_1` and also stops words 6 and 135 from playing

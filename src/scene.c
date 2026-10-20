@@ -810,10 +810,25 @@ Scene *scene_load(SDL_Renderer *r, const char *data_root, int id)
        The six unused Y hotspots in 2023 fall back to unrelated A words;
        hide them.  This is the minimal YETI navigation fix. */
     if (id == 3135) {
+        /* YETI is the only Y word.  The shipped data points both word arrows
+           back at 3135, so they are dead controls; keep them inactive rather
+           than inventing a destination.  Their artwork stays in tlo. */
         Comp *l = scene_find(s, "browWyrL");
         Comp *r = scene_find(s, "browWyrP");
-        if (l) { l->modal_set = true; l->modal_result = 2023; l->auto_click_exit = true; }
-        if (r) { r->modal_set = true; r->modal_result = 2023; r->auto_click_exit = true; }
+        if (l) {
+            l->visible = l->visible0 = false;
+            l->modal_set = false;
+            l->auto_click_exit = false;
+            l->hover_lock = true;
+        }
+        if (r) {
+            r->visible = r->visible0 = false;
+            r->modal_set = false;
+            r->auto_click_exit = false;
+            r->hover_lock = true;
+        }
+        if (getenv("ABC_DEBUG"))
+            log_info("YETI word arrows disabled");
     } else if (id == 2023) {
         for (int i = 2; i <= 7; i++) {
             char nm[8];
