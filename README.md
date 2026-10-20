@@ -194,6 +194,17 @@ and documents the inference:
 
 ## Testing
 
+A headless regression suite lives in [`tests/run.sh`](tests/run.sh). It checks
+the parser counts, loads and renders every scene, walks the train→letter→word
+→game→word flow, completes every activity, verifies the IGLO fix, and plays
+video clips:
+
+```bash
+DATA=../abc-re/abc tests/run.sh
+```
+
+Individual tools:
+
 Data validation (no window needed):
 
 ```bash

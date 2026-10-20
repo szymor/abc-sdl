@@ -1,0 +1,18 @@
+# End-to-end navigation: train → letter → word → game → word.
+# Usage: abc-sdl --start 1001 --script tests/flows.txt
+scene 1001
+wait 100
+click 317 308        # wagon A
+wait 200
+dump                 # -> 2001
+move 280 360         # reveal the record player
+wait 200
+click 280 360
+wait 200
+dump                 # -> 3001 ADAPTER
+click 500 398        # KlGra
+wait 200
+dump                 # -> 15001 Zgadywanka 1
+click 560 180        # correct object
+wait 9000
+dump                 # -> 3001 again

@@ -11,6 +11,7 @@ abc-sdl.exe
 
 # Runtime artefacts
 screenshots/
+tests/out/
 *.png
 !docs/**/*.png
 

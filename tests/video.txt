@@ -1,0 +1,15 @@
+# Video playback and dismissal (requires FFmpeg at build time).
+scene 3016
+wait 100
+click 280 400        # KlTabl → C.AVI
+wait 700
+shot tests/out/letter.png
+click 300 300        # dismiss
+dump
+scene 3016
+wait 100
+click 350 400        # KlKamera → 16_1.AVI
+wait 900
+shot tests/out/film.png
+wait 6000
+dump                 # clip ended, still in 3016

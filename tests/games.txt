@@ -1,0 +1,149 @@
+scene 11002
+wait 100
+move 246 449
+down 246 449
+move 266 429
+move 83 53
+up 83 53
+move 97 434
+down 97 434
+move 117 414
+move 224 53
+up 224 53
+move 484 236
+down 484 236
+move 504 216
+move 358 53
+up 358 53
+move 588 183
+down 588 183
+move 608 163
+move 59 135
+up 59 135
+move 492 52
+down 492 52
+move 512 32
+move 134 124
+up 134 124
+move 87 349
+down 87 349
+move 107 329
+move 243 124
+up 243 124
+move 493 151
+down 493 151
+move 513 131
+move 361 130
+up 361 130
+move 199 351
+down 199 351
+move 219 331
+move 59 234
+up 59 234
+move 588 66
+down 588 66
+move 608 46
+move 130 224
+up 130 224
+move 366 360
+down 366 360
+move 386 340
+move 208 224
+up 208 224
+move 279 360
+down 279 360
+move 299 340
+move 281 224
+up 281 224
+dump
+wait 2200
+dump
+
+scene 13022
+wait 100
+click 120 79
+dump
+click 64 107
+dump
+click 217 141
+dump
+click 218 216
+dump
+click 296 210
+dump
+click 73 309
+dump
+click 90 422
+dump
+click 292 295
+dump
+wait 2200
+dump
+scene 16010
+wait 100
+click 60 406
+click 200 416
+click 549 322
+dump
+wait 7000
+dump
+scene 17012
+wait 100
+click 391 154
+click 167 118
+dump
+click 353 404
+click 161 234
+dump
+click 565 68
+click 155 365
+dump
+wait 2200
+dump
+scene 18026
+wait 100
+click 310 313
+click 519 101
+dump
+wait 2200
+dump
+
+scene 12007
+wait 100
+click 509 49
+click 36 119
+dump
+click 321 433
+click 36 119
+dump
+click 568 336
+click 189 138
+dump
+click 93 430
+click 189 138
+dump
+click 329 41
+click 342 114
+dump
+click 488 278
+click 342 114
+dump
+click 566 253
+click 297 178
+dump
+click 241 42
+click 95 177
+dump
+click 106 44
+click 107 39
+dump
+click 537 154
+click 107 39
+dump
+wait 2200
+dump
+scene 14016
+wait 100
+player 460 235
+wait 2500
+dump
