@@ -394,7 +394,9 @@ void modules_setup(Scene *s, const char *data_root)
        shows the whole title, then CYM-BAL-KI on hover). */
     if (s->module == 3) {
         static const char *overlays[] = {"sylaby", "duzaLit", "malaLit",
-                                         "rzecz", "ciuchcia", NULL};
+                                         "rzecz", "ciuchcia", "KlTabl",
+                                         "KlKamera", "KlAparat", "KlGra",
+                                         NULL};
         for (int i = 0; overlays[i]; i++) {
             Comp *c = scene_find(s, overlays[i]);
             if (c)
@@ -403,9 +405,7 @@ void modules_setup(Scene *s, const char *data_root)
         /* These are interaction hotspots; their artwork is already part of
            `tlo`.  Drawing the sprites as well creates a slightly doubled or
            shifted edge, so keep them clickable but invisible. */
-        static const char *baked[] = {"browWyrL", "browWyrP", "KlTabl",
-                                      "KlKamera", "KlAparat", "KlGra",
-                                      NULL};
+        static const char *baked[] = {"browWyrL", "browWyrP", NULL};
         for (int i = 0; baked[i]; i++) {
             Comp *c = scene_find(s, baked[i]);
             if (c) {
@@ -1243,6 +1243,26 @@ static bool tv_click(Scene *s, int x, int y, Comp *hit)
             fprintf(stderr, "disabled TV button %s ignored\n", hit->name);
         return true;
     }
+    /* The four media buttons are mutually exclusive active states.  A click
+       keeps the chosen button in its abnormal/pressed frame until another
+       button is chosen; clicking the already active button does nothing. */
+    if (hit->state == ST_ABNORMAL) {
+        if (getenv("ABC_DEBUG"))
+            fprintf(stderr, "active TV button %s ignored\n", hit->name);
+        return true;
+    }
+    static const char *tv_buttons[] = {"KlTabl", "KlKamera", "KlAparat", "KlGra"};
+    for (int i = 0; i < 4; i++) {
+        Comp *b = scene_find(s, tv_buttons[i]);
+        if (b && b != hit) {
+            comp_set_state(s, b, ST_NORMAL);
+            if (getenv("ABC_DEBUG") && b->state == ST_NORMAL)
+                fprintf(stderr, "TV button %s normal\n", b->name);
+        }
+    }
+    comp_set_state(s, hit, ST_ABNORMAL);
+    if (getenv("ABC_DEBUG"))
+        fprintf(stderr, "TV button %s active\n", hit->name);
     char *path = resolve_asset(s->data_root, which);
     bool exists = file_exists(path);
     click_visual(s, hit);

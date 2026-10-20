@@ -263,7 +263,7 @@ grep -q "scene 3016 origin 0,0" "$TMP/wordhover.log"
 grep -q "scene 2003 origin 0,0" "$TMP/wordhover.log"
 grep -q "align tlo native 640x480" "$TMP/wordhover.log"
 grep -q "align Tlo native 640x480" "$TMP/wordhover.log"
-grep -q "baked overlay KlTabl hidden" "$TMP/wordhover.log"
+grep -q "baked overlay browWyrL hidden" "$TMP/wordhover.log"
 if cmp -s "$TMP/word-rest.png" "$TMP/word-title.png"; then
     echo "title hover did not show the syllable strip" >&2
     exit 1
@@ -290,6 +290,30 @@ if cmp -s "$TMP/letter-rest.png" "$TMP/letter-train.png"; then
 fi
 echo "   native background; title/letters/object/train hover overlays aligned"
 
+echo "== TV media button active state"
+cat > "$TMP/tvstate.txt" <<'EOF'
+scene 3001
+wait 100
+click 354 399
+wait 100
+click 320 240
+wait 100
+click 287 400
+wait 100
+click 320 240
+wait 100
+click 287 400
+wait 100
+dump
+EOF
+ABC_DEBUG=1 SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
+    --script "$TMP/tvstate.txt" > "$TMP/tvstate.log" 2>&1
+grep -q "TV button KlKamera active" "$TMP/tvstate.log"
+grep -q "TV button KlKamera normal" "$TMP/tvstate.log"
+grep -q "TV button KlTabl active" "$TMP/tvstate.log"
+grep -q "active TV button KlTabl ignored" "$TMP/tvstate.log"
+echo "   click selects one pressed media button; active button ignores repeats"
+
 echo "== video (best effort)"
 mkdir -p "$ROOT/tests/out"
 if SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
@@ -309,8 +333,10 @@ dump
 click 300 300
 wait 300
 dump
-click 280 400
-wait 5500
+click 350 400
+wait 700
+click 300 300
+wait 300
 dump
 EOF
 if ABC_DEBUG=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=dummy "$BIN" \
