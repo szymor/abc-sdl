@@ -158,6 +158,24 @@ else
     echo "   puzzle audio test skipped (no audio device)" >&2
 fi
 
+echo "== puzzle piece alignment"
+cat > "$TMP/puzzle_align.txt" <<'EOF'
+scene 11004
+wait 10
+EOF
+ABC_DEBUG=1 SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
+    --script "$TMP/puzzle_align.txt" > "$TMP/puzzle_align.log" 2>&1
+for spec in "k01 3 3" "k02 3 4" "k03 3 4" "k04 3 4" \
+            "k05 4 4" "k06 4 4" "k07 4 4" "k08 4 3"; do
+    set -- $spec
+    if ! grep -q "puzzle $1 content offset $2,$3" "$TMP/puzzle_align.log"; then
+        echo "puzzle $1 content offset is wrong" >&2
+        grep "puzzle k" "$TMP/puzzle_align.log" >&2
+        exit 1
+    fi
+done
+echo "   piece content offsets skip the anti-aliased tray border"
+
 echo "== wrong-answer speech + buzz"
 cat > "$TMP/wrong.txt" <<'EOF'
 scene 15001

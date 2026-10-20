@@ -136,12 +136,48 @@ static SDL_Texture *texture_from_surface(SDL_Renderer *r, SDL_Surface *surf, int
     uint32_t corner = px[(rgba->h - 1) * stride]; /* VCL transparent colour */
     if (key_corner) {
         /* Puzzle-piece sheets use the tray colour as the VCL transparent
-           colour; removing it deletes the pink/purple/green borders that
-           would otherwise show between placed pieces. */
+           colour.  Remove the border-connected pixels only: exact matching
+           leaves anti-aliased tray-colour fringes, while removing every
+           similar pixel would punch holes in the assembled picture. */
+        int cr = (corner >> 16) & 255, cg = (corner >> 8) & 255, cb = corner & 255;
+        unsigned char *bg = xcalloc((size_t)total, 1);
         for (int i = 0; i < total; i++) {
-            if ((px[i] & 0x00FFFFFFu) == (corner & 0x00FFFFFFu))
-                px[i] = 0;
+            int dr = (int)((px[i] >> 16) & 255) - cr;
+            int dg = (int)((px[i] >> 8) & 255) - cg;
+            int db = (int)(px[i] & 255) - cb;
+            if ((px[i] & 0xFF000000u) &&
+                dr * dr + dg * dg + db * db <= 64 * 64)
+                bg[i] = 1;
         }
+        int *stack = xmalloc((size_t)total * sizeof(int));
+        int sp = 0;
+        for (int x = 0; x < rgba->w; x++) {
+            int p0 = x, p1 = (rgba->h - 1) * stride + x;
+            if (bg[p0]) { bg[p0] = 0; px[p0] = 0; stack[sp++] = p0; }
+            if (bg[p1]) { bg[p1] = 0; px[p1] = 0; stack[sp++] = p1; }
+        }
+        for (int y = 0; y < rgba->h; y++) {
+            int p0 = y * stride, p1 = y * stride + rgba->w - 1;
+            if (bg[p0]) { bg[p0] = 0; px[p0] = 0; stack[sp++] = p0; }
+            if (bg[p1]) { bg[p1] = 0; px[p1] = 0; stack[sp++] = p1; }
+        }
+        while (sp > 0) {
+            int p = stack[--sp];
+            int x = p % stride, y = p / stride;
+            int nb[4] = {x > 0 ? p - 1 : -1, x + 1 < rgba->w ? p + 1 : -1,
+                         y > 0 ? p - stride : -1,
+                         y + 1 < rgba->h ? p + stride : -1};
+            for (int k = 0; k < 4; k++) {
+                int q = nb[k];
+                if (q >= 0 && bg[q]) {
+                    bg[q] = 0;
+                    px[q] = 0;
+                    stack[sp++] = q;
+                }
+            }
+        }
+        free(stack);
+        free(bg);
     }
     if (key_black && (corner & 0x00FFFFFFu) == 0) {
         /* Remove only the black backdrop connected to the sprite border.
@@ -406,16 +442,36 @@ static void compute_piece_content(Comp *c)
     if (fi < 0 || fi >= frames)
         fi = 0;
     uint32_t corner = px[(rgba->h - 1) * stride];
+    /* The tray-colour border is not perfectly flat: a few anti-aliased
+       pixels differ from the corner colour.  Treat a row/column as border
+       when most of it is within a small colour distance of that colour, and
+       take the first row/column that is not; otherwise one fringe pixel can
+       shift the whole piece and leave a background-coloured sliver. */
+    int cr = (corner >> 16) & 255, cg = (corner >> 8) & 255, cb = corner & 255;
     int minx = fw, miny = rgba->h;
     for (int y = 0; y < rgba->h; y++) {
+        int near = 0;
         for (int x = fi * fw; x < (fi + 1) * fw; x++) {
             uint32_t p = px[y * stride + x];
-            if ((p & 0xFF000000u) &&
-                (p & 0x00FFFFFFu) != (corner & 0x00FFFFFFu)) {
-                if (x - fi * fw < minx) minx = x - fi * fw;
-                if (y < miny) miny = y;
-            }
+            int dr = (int)((p >> 16) & 255) - cr;
+            int dg = (int)((p >> 8) & 255) - cg;
+            int db = (int)(p & 255) - cb;
+            if (!(p & 0xFF000000u) || dr * dr + dg * dg + db * db <= 30 * 30)
+                near++;
         }
+        if (near * 2 < fw) { miny = y; break; }
+    }
+    for (int x = 0; x < fw; x++) {
+        int near = 0;
+        for (int y = 0; y < rgba->h; y++) {
+            uint32_t p = px[y * stride + fi * fw + x];
+            int dr = (int)((p >> 16) & 255) - cr;
+            int dg = (int)((p >> 8) & 255) - cg;
+            int db = (int)(p & 255) - cb;
+            if (!(p & 0xFF000000u) || dr * dr + dg * dg + db * db <= 30 * 30)
+                near++;
+        }
+        if (near * 2 < rgba->h) { minx = x; break; }
     }
     if (minx == fw && miny == rgba->h) {
         c->content_off_x = 0;
@@ -513,8 +569,12 @@ static void load_comp(Scene *s, Comp *c)
                          c->name[0] == 'k' && isdigit((unsigned char)c->name[1]));
         c->tex = texture_from_surface(s->renderer, surf, &tw, &th, &mag,
                                       key_black, c->key_corner);
-        if (c->tex && c->key_corner)
+        if (c->tex && c->key_corner) {
             compute_piece_content(c);
+            if (getenv("ABC_DEBUG"))
+                fprintf(stderr, "puzzle %s content offset %d,%d\n", c->name,
+                        c->content_off_x, c->content_off_y);
+        }
         SDL_DestroySurface(surf);
         if (c->tex) {
             c->tex_w = tw;
