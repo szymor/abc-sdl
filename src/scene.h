@@ -89,7 +89,7 @@ typedef struct Comp {
     int col_w, col_h;
 
     /* Game bookkeeping */
-    bool found, placed, selected, hover_lock, correct;
+    bool found, placed, selected, hover_lock, correct, disabled;
     int home_left, home_top;
     char maphs[8][24];
     int nmaphs;

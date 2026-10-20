@@ -247,6 +247,7 @@ static void flood_fill(Scene *s, int sx, int sy, SDL_Rect *area)
 }
 
 static void maze_pick_start(Comp *maze, int *sx, int *sy);
+static const char *media_file(Scene *s, const char *comp_name);
 
 static void reset_game(Scene *s)
 {
@@ -370,6 +371,28 @@ void modules_setup(Scene *s, const char *data_root)
                     }
                 }
             }
+        }
+    }
+
+    /* Telewizorek: mark media buttons whose clip is absent (the original
+       draws these yellow). */
+    if (s->module == 3) {
+        static const char *buttons[3] = {"KlTabl", "KlKamera", "KlAparat"};
+        static const char *media[3] = {"aviLit", "aviFilm", "aviFoto"};
+        for (int i = 0; i < 3; i++) {
+            Comp *b = scene_find(s, buttons[i]);
+            const char *f = media_file(s, media[i]);
+            if (!b || !f) {
+                if (b)
+                    b->disabled = true;
+                continue;
+            }
+            char *p = resolve_asset(s->data_root, f);
+            b->disabled = !file_exists(p);
+            if (getenv("ABC_DEBUG"))
+                fprintf(stderr, "media %s <- %s (%s) disabled=%d\n",
+                        buttons[i], f, p, (int)b->disabled);
+            free(p);
         }
     }
 
@@ -1295,6 +1318,17 @@ static void outline_rect(SDL_Renderer *r, SDL_Rect rc, Uint8 cr, Uint8 cg, Uint8
 void modules_render_overlay(Scene *s)
 {
     SDL_Renderer *r = s->renderer;
+    for (int i = 0; i < s->ncomps; i++) {
+        Comp *c = &s->comps[i];
+        if (!c->disabled || !c->visible)
+            continue;
+        SDL_FRect rc;
+        comp_rect(s, c, &rc);
+        SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(r, 245, 210, 30, 110);
+        SDL_RenderFillRect(r, &rc);
+        SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
+    }
     switch (s->module) {
     case 10:
         if (s->palette_n > 0 && s->sel_color >= 0 && s->sel_color < s->palette_n) {

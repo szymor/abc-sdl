@@ -941,11 +941,16 @@ void scene_render(Scene *s)
     }
 
     if (s->module == 14 && s->player_init) {
-        SDL_SetRenderDrawColor(r, 255, 230, 40, 255);
-        SDL_FRect dot = {(float)s->player_x - 7, (float)s->player_y - 7, 14, 14};
-        SDL_RenderFillRect(r, &dot);
-        SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
-        SDL_RenderRect(r, &dot);
+        /* The original installs a letter cursor (LIT_C…) for the maze word.
+           We draw the word's initial as a sprite over the pointer position. */
+        const char *title = scene_word_title(s->id % 1000);
+        char letter[2] = {title && title[0] ? title[0] : '?', 0};
+        int tw = font_text_width(letter, 3);
+        int th = font_text_height(3);
+        int tx = s->player_x - tw / 2;
+        int ty = s->player_y - th / 2;
+        font_draw(r, (float)tx + 2, (float)ty + 2, letter, 3, 0, 0, 0);
+        font_draw(r, (float)tx, (float)ty, letter, 3, 255, 235, 40);
     }
 
     modules_render_overlay(s);
