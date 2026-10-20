@@ -196,9 +196,10 @@ Requested fixes that are active by default:
   it instead of the generic sound.
 * **One voice at a time:** every WAV cue is exclusive — starting a new one
   stops the previous cue. Choosing an item in a task therefore cuts the
-  rules explanation; the pencil toolbar is silent on hover so it cannot
-  interrupt the instruction merely by being under the pointer. MIDI music is
-  independent and continues.
+  rules explanation. Pencil hover hints still play, but only after the
+  pointer has dwelt on the pencil for 250 ms, so a pointer passing through
+  (or already resting over the toolbar when a game opens) cannot interrupt
+  the instruction by accident. MIDI music is independent and continues.
 * **Video/audio:** video frames are scheduled by PTS so long clips stay in
   sync with their audio; leaving a scene or closing a video stops its sound,
   and the old MIDI playlist is silenced and flushed before a new one starts.

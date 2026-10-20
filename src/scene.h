@@ -93,6 +93,8 @@ typedef struct Comp {
 
     /* Game bookkeeping */
     bool found, placed, selected, hover_lock, correct, disabled;
+    bool hover_wave_pending;
+    uint64_t hover_wave_at;
     int home_left, home_top;
     char maphs[8][24];
     int nmaphs;

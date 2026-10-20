@@ -861,11 +861,19 @@ void comp_set_state(Scene *s, Comp *c, CompState st)
     if (c->state == st)
         return;
     c->state = st;
-    /* The pencil toolbar sits under the pointer when a game opens.  Its
-       hover auto-play cue would immediately cut the spoken task instruction,
-       so pencils only make a sound on an actual click. */
-    if (c->cls != CC_WYSUN)
+    if (c->cls == CC_WYSUN) {
+        /* Pencils do speak on hover, but only after a short dwell: a pointer
+           passing through (or already resting over the toolbar when a game
+           opens) should not cut the spoken task instruction by accident. */
+        if (st == ST_ABNORMAL && c->autoplay_abnormal && c->wav_abnormal) {
+            c->hover_wave_pending = true;
+            c->hover_wave_at = SDL_GetTicks() + 250;
+        } else {
+            c->hover_wave_pending = false;
+        }
+    } else {
         play_state_wave(s, c, st);
+    }
 }
 
 void comp_play_click(Scene *s, Comp *c)
@@ -891,6 +899,7 @@ void comp_play_click(Scene *s, Comp *c)
         else if (c->wav_normal)
             a = c->wav_normal;
     }
+    c->hover_wave_pending = false;
     if (getenv("ABC_DEBUG"))
         fprintf(stderr, "click %-12s state=%d audio=%s\n", c->name,
                 (int)c->state, a ? "yes" : (s->wav_default ? "default" : "none"));
@@ -1024,6 +1033,24 @@ static void hover_update(Scene *s)
     }
 }
 
+static void hover_wave_update(Scene *s)
+{
+    for (int i = 0; i < s->ncomps; i++) {
+        Comp *c = &s->comps[i];
+        if (!c->hover_wave_pending)
+            continue;
+        if (c->state != ST_ABNORMAL) {
+            c->hover_wave_pending = false;
+            continue;
+        }
+        if (s->now >= c->hover_wave_at) {
+            c->hover_wave_pending = false;
+            if (c->wav_abnormal)
+                audio_play(c->wav_abnormal, 1.0f);
+        }
+    }
+}
+
 static void anim_update(Scene *s)
 {
     for (int i = 0; i < s->ncomps; i++) {
@@ -1063,6 +1090,7 @@ void scene_update(Scene *s, float dt)
 {
     s->now = SDL_GetTicks();
     hover_update(s);
+    hover_wave_update(s);
     anim_update(s);
 
     if (s->has_toolbar) {
