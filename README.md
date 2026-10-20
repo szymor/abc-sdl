@@ -211,9 +211,10 @@ Requested fixes that are active by default:
   targets; the syllable strip, letter highlights, object highlight and the
   larger train icon are hover-only overlays. TV media buttons have no hover
   change, but a click switches that button to its pressed/active frame; the
-  four buttons are mutually exclusive, the active button stays pressed until
-  another is chosen, and clicking the active button again does nothing. The
-  title is whole at rest and separates
+  four buttons are mutually exclusive. Unlike the original (which kept the
+  last button pressed), the button is released when the clip ends or is
+  dismissed, so it visibly offers itself for another playback. The title is
+  whole at rest and separates
   into syllables (`CYM BAL KI`) only while hovered. The syllable strip is a
   separate pre-rendered bitmap blitted at native size, not runtime text; its
   lettering is slightly lighter than the baked title, as on the disc.

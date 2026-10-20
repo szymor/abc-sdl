@@ -1218,6 +1218,23 @@ static void anim_update(Scene *s)
     }
 }
 
+static void release_media_buttons(Scene *s)
+{
+    if (s->module != 3)
+        return;
+    static const char *buttons[] = {"KlTabl", "KlKamera", "KlAparat", "KlGra"};
+    bool changed = false;
+    for (int i = 0; i < 4; i++) {
+        Comp *c = scene_find(s, buttons[i]);
+        if (c && c->state != ST_NORMAL) {
+            c->state = ST_NORMAL;
+            changed = true;
+        }
+    }
+    if (changed && getenv("ABC_DEBUG"))
+        log_info("TV media buttons released after playback");
+}
+
 static void restart_scene_music(Scene *s)
 {
     if (!s->video_stop_music)
@@ -1268,10 +1285,13 @@ void scene_update(Scene *s, float dt)
     if (s->video && !video_tick(s->video, s->now)) {
         video_close(s->video);
         s->video = NULL;
+        release_media_buttons(s);
         restart_scene_music(s);
     }
-    if (s->video_until && s->now >= s->video_until)
+    if (s->video_until && s->now >= s->video_until) {
         s->video_until = 0;
+        release_media_buttons(s);
+    }
     if (s->toast_until && s->now >= s->toast_until)
         s->toast_until = 0;
 
@@ -1449,6 +1469,7 @@ bool scene_click(Scene *s, int x, int y)
         video_close(s->video);
         s->video = NULL;
         s->video_until = 0;
+        release_media_buttons(s);
         restart_scene_music(s);
         return true;
     }
@@ -1458,6 +1479,7 @@ bool scene_click(Scene *s, int x, int y)
     }
     if (s->video_until) {
         s->video_until = 0;
+        release_media_buttons(s);
         return true;
     }
     Comp *hit = scene_hit(s, x, y);

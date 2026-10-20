@@ -298,21 +298,17 @@ click 354 399
 wait 100
 click 320 240
 wait 100
-click 287 400
+click 354 399
 wait 100
 click 320 240
-wait 100
-click 287 400
 wait 100
 dump
 EOF
 ABC_DEBUG=1 SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
     --script "$TMP/tvstate.txt" > "$TMP/tvstate.log" 2>&1
-grep -q "TV button KlKamera active" "$TMP/tvstate.log"
-grep -q "TV button KlKamera normal" "$TMP/tvstate.log"
-grep -q "TV button KlTabl active" "$TMP/tvstate.log"
-grep -q "active TV button KlTabl ignored" "$TMP/tvstate.log"
-echo "   click selects one pressed media button; active button ignores repeats"
+[ "$(grep -c 'TV button KlKamera active' "$TMP/tvstate.log")" -eq 2 ]
+[ "$(grep -c 'TV media buttons released after playback' "$TMP/tvstate.log")" -eq 2 ]
+echo "   media buttons are released after playback and can be pressed again"
 
 echo "== video (best effort)"
 mkdir -p "$ROOT/tests/out"
