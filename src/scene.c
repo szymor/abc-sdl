@@ -548,6 +548,8 @@ void scene_free(Scene *s)
     /* Embedded waves are owned by their components; file waves by the cache. */
     if (s->paint_tex)
         SDL_DestroyTexture(s->paint_tex);
+    if (s->video)
+        video_close(s->video);
     free(s->paint_bg);
     free(s->paint_px);
     free(s);
@@ -866,6 +868,10 @@ void scene_update(Scene *s, float dt)
         if (s->now >= due && s->return_id > 0)
             scene_request(s, s->return_id);
     }
+    if (s->video && !video_tick(s->video, s->now)) {
+        video_close(s->video);
+        s->video = NULL;
+    }
     if (s->video_until && s->now >= s->video_until)
         s->video_until = 0;
     if (s->toast_until && s->now >= s->toast_until)
@@ -955,7 +961,14 @@ void scene_render(Scene *s)
 
     modules_render_overlay(s);
 
-    if (s->video_until) {
+    if (s->video) {
+        SDL_Rect vr;
+        if (s->video_fullscreen)
+            vr = (SDL_Rect){0, 0, ABC_W, ABC_H};
+        else
+            vr = s->video_rect;
+        video_render(s->video, r, vr);
+    } else if (s->video_until) {
         SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
         SDL_FRect vrect = {(float)s->video_rect.x, (float)s->video_rect.y,
                            (float)s->video_rect.w, (float)s->video_rect.h};
@@ -988,6 +1001,12 @@ void scene_render(Scene *s)
 
 bool scene_click(Scene *s, int x, int y)
 {
+    if (s->video) {
+        video_close(s->video);
+        s->video = NULL;
+        s->video_until = 0;
+        return true;
+    }
     if (s->info_overlay) {
         s->info_overlay = false;
         return true;

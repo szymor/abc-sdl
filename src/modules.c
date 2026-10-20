@@ -1108,7 +1108,14 @@ static bool train_click(Scene *s, int x, int y, Comp *hit)
     }
     if (hit && str_ieq(hit->name, "info")) {
         click_visual(s, hit);
-        s->info_overlay = true;
+        char *path = resolve_asset(s->data_root, "\\AVI\\AUTORZY.AVI");
+        if (file_exists(path)) {
+            s->video = video_open(s->renderer, path);
+            s->video_fullscreen = true;
+        }
+        free(path);
+        if (!s->video)
+            s->info_overlay = true;
         return true;
     }
     return false;
@@ -1146,9 +1153,9 @@ static bool tv_click(Scene *s, int x, int y, Comp *hit)
         return false;
     char *path = resolve_asset(s->data_root, which);
     bool exists = file_exists(path);
-    free(path);
     click_visual(s, hit);
     if (!exists) {
+        free(path);
         play_bad(s);
         return true;
     }
@@ -1160,13 +1167,24 @@ static bool tv_click(Scene *s, int x, int y, Comp *hit)
     } else {
         s->video_rect = (SDL_Rect){180, 90, 380, 290};
     }
-    if (s->video_rect.w < 40) {
+    if (s->video_rect.w < 40)
         s->video_rect = (SDL_Rect){180, 90, 380, 290};
+
+    if (s->video) {
+        video_close(s->video);
+        s->video = NULL;
     }
-    const char *base = strrchr(which, '\\');
-    if (!base) base = strrchr(which, '/');
-    snprintf(s->video_label, sizeof(s->video_label), "%s: %s", label, base ? base + 1 : which);
-    s->video_until = SDL_GetTicks() + 3000;
+    s->video = video_open(s->renderer, path);
+    s->video_fullscreen = false;
+    if (!s->video) {
+        /* FFmpeg unavailable or codec unsupported: keep a placeholder card. */
+        const char *base = strrchr(which, '\\');
+        if (!base) base = strrchr(which, '/');
+        snprintf(s->video_label, sizeof(s->video_label), "%s: %s", label,
+                 base ? base + 1 : which);
+        s->video_until = SDL_GetTicks() + 3000;
+    }
+    free(path);
     return true;
 }
 

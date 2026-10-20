@@ -3,6 +3,7 @@
 
 #include "audio.h"
 #include "dfm.h"
+#include "video.h"
 
 #include <SDL3/SDL.h>
 #include <stdbool.h>
@@ -152,6 +153,8 @@ typedef struct Scene {
     bool drag_moved;
 
     /* Overlays */
+    VideoPlayer *video;
+    bool video_fullscreen;
     uint64_t video_until;
     char video_label[128];
     SDL_Rect video_rect;

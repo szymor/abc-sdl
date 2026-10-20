@@ -31,7 +31,7 @@ The reverse-engineering specification this port is based on lives in
 | Maze (Labirynt) | complete — 1-bpp collision map, cursor-following player, good/bad exits |
 | Zgadywanka 1–4 | complete — all 35 scenes, counters and feedback |
 | Audio | WAV one-shots (SDL3_mixer) + shuffled MIDI playlists (FluidSynth) |
-| Video (AVI) | **deferred** — buttons work and show a placeholder card; decode is the next milestone |
+| Video (AVI) | complete — Cinepak/MSVideo1/Indeo3 decoded by FFmpeg into the `TEkran` rect, with audio |
 | Cursors (`PEDZEL`, `LIT_*`) | not yet extracted; the maze draws a marker instead |
 | Printing | exports a PNG instead of GDI printing |
 
@@ -47,13 +47,14 @@ Requirements:
 
 * C11 compiler, CMake ≥ 3.20
 * SDL3, SDL3_image, SDL3_mixer
+* FFmpeg development libraries (libavformat/avcodec/swscale/swresample) for AVI
 * FluidSynth (optional, for MIDI music) + a GM soundfont
 
 On Arch:
 
 ```bash
-sudo pacman -S base-devel cmake sdl3 sdl3_image sdl3_mixer fluidsynth \
-               soundfont-fluid
+sudo pacman -S base-devel cmake sdl3 sdl3_image sdl3_mixer ffmpeg \
+               fluidsynth soundfont-fluid
 ```
 
 Build:
@@ -120,6 +121,7 @@ src/scene.c     FRM loader → components, bitmaps/masks, rendering, hit testing
                 generic component state machine, transitions
 src/modules.c   per-module behaviour for all 10 module families
 src/audio.c     WAV cache/one-shots, MIDI playlists (FluidSynth)
+src/video.c     AVI demux/decode (FFmpeg), frame timing, audio extraction
 src/font.c      tiny 5×7 bitmap font for placeholders and toasts
 src/util.c      file loading, case-insensitive Windows path resolution
 ```
@@ -226,13 +228,20 @@ Set `ABC_DEBUG=1` for component-draw, palette and train-box diagnostics.
 
 ---
 
-## Next milestones
+## Video playback
 
-1. **AVI playback** — decode Cinepak / MSVideo1 / Indeo3 with FFmpeg into the
-   `TEkran` rectangle (the only deferred gameplay-visible feature).
-2. **Original cursors** — extract `RT_CURSOR` groups from `ABC.EXE`
+AVI clips are demuxed and decoded with FFmpeg. Video frames are scaled into
+the scene's `TEkran` rectangle (320×240 in the original layout); the credits
+clip (`AUTORZY.AVI`) plays full-screen from the train hub's rabbit. The
+stream's audio is decoded once to 44.1 kHz stereo PCM and played through the
+same mixer as the WAV one-shots. When FFmpeg is unavailable at build time the
+old placeholder card is used instead.
+
+**Next milestones**
+
+1. **Original cursors** — extract `RT_CURSOR` groups from `ABC.EXE`
    (`PEDZEL`, `LIT_C`…) and use them for colouring/maze.
-3. **Polish glyphs in the tiny font** (currently ASCII only) and a proper
+2. **Polish glyphs in the tiny font** (currently ASCII only) and a proper
    print dialog/export layout.
-4. Optional `--fix-content` pack: make IGLO reachable, repair the YETI
+3. Optional `--fix-content` pack: make IGLO reachable, repair the YETI
    numbering and the duplicate/missing clips, disable bogus fallback links.

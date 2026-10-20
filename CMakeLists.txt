@@ -16,6 +16,7 @@ pkg_check_modules(SDL3 REQUIRED IMPORTED_TARGET sdl3)
 pkg_check_modules(SDL3_IMAGE REQUIRED IMPORTED_TARGET sdl3-image)
 pkg_check_modules(SDL3_MIXER REQUIRED IMPORTED_TARGET sdl3-mixer)
 pkg_check_modules(FLUIDSYNTH IMPORTED_TARGET fluidsynth)
+pkg_check_modules(FFMPEG IMPORTED_TARGET libavformat libavcodec libavutil libswscale libswresample)
 
 add_executable(abc-sdl
   src/main.c
@@ -25,6 +26,7 @@ add_executable(abc-sdl
   src/scene.c
   src/modules.c
   src/font.c
+  src/video.c
 )
 
 target_include_directories(abc-sdl PRIVATE src)
@@ -42,4 +44,12 @@ if(FLUIDSYNTH_FOUND)
   message(STATUS "fluidsynth found - MIDI music enabled")
 else()
   message(STATUS "fluidsynth not found - MIDI music disabled")
+endif()
+
+if(FFMPEG_FOUND)
+  target_compile_definitions(abc-sdl PRIVATE HAVE_FFMPEG=1)
+  target_link_libraries(abc-sdl PRIVATE PkgConfig::FFMPEG)
+  message(STATUS "FFmpeg found - AVI playback enabled")
+else()
+  message(STATUS "FFmpeg not found - AVI playback disabled")
 endif()
