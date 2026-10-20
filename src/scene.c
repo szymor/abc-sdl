@@ -3,6 +3,7 @@
 #include "font.h"
 #include "util.h"
 
+#include <ctype.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -120,7 +121,7 @@ static SDL_Surface *bmp_surface(DfmValue *v)
     return SDL_LoadBMP_IO(io, true);
 }
 
-static SDL_Texture *texture_from_surface(SDL_Renderer *r, SDL_Surface *surf, int *w, int *h, bool *magenta)
+static SDL_Texture *texture_from_surface(SDL_Renderer *r, SDL_Surface *surf, int *w, int *h, bool *magenta, bool key_black)
 {
     SDL_Surface *rgba = SDL_ConvertSurface(surf, SDL_PIXELFORMAT_ARGB8888);
     if (!rgba)
@@ -130,6 +131,16 @@ static SDL_Texture *texture_from_surface(SDL_Renderer *r, SDL_Surface *surf, int
     *magenta = false;
     uint32_t *px = rgba->pixels;
     int total = rgba->w * rgba->h;
+    int stride = rgba->pitch / 4;
+    uint32_t corner = px[(rgba->h - 1) * stride]; /* VCL transparent colour */
+    if (key_black && (corner & 0x00FFFFFFu) == 0) {
+        /* Toolbar/animation sprites are drawn over a black rectangle in the
+           bitmap.  The pure-black background becomes transparent, while the
+           dark (8,8,8) outlines stay intact. */
+        for (int i = 0; i < total; i++)
+            if ((px[i] & 0x00FFFFFFu) == 0)
+                px[i] = 0;
+    }
     int mag = 0;
     for (int i = 0; i < total; i++) {
         if ((px[i] & 0x00FFFFFFu) == 0x00FF00FFu)
@@ -215,6 +226,27 @@ static MIX_Audio *wave_blob(DfmValue *v)
     if (memcmp(v->bin, "RIFF", 4) != 0)
         return NULL;
     return audio_load_mem(v->bin, v->bin_len);
+}
+
+static bool named_color(const char *name, uint32_t *out)
+{
+    static const struct { const char *n; uint32_t c; } map[] = {
+        {"clBlack", 0x000000}, {"clMaroon", 0x800000},
+        {"clGreen", 0x008000}, {"clOlive", 0x808000},
+        {"clNavy", 0x000080}, {"clPurple", 0x800080},
+        {"clTeal", 0x008080}, {"clGray", 0x808080},
+        {"clSilver", 0xC0C0C0}, {"clRed", 0xFF0000},
+        {"clLime", 0x00FF00}, {"clYellow", 0xFFFF00},
+        {"clBlue", 0x0000FF}, {"clFuchsia", 0xFF00FF},
+        {"clAqua", 0x00FFFF}, {"clWhite", 0xFFFFFF},
+    };
+    for (size_t i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
+        if (str_ieq(name, map[i].n)) {
+            *out = 0xFF000000u | map[i].c;
+            return true;
+        }
+    }
+    return false;
 }
 
 static CompClass class_of(const char *cls)
@@ -318,6 +350,25 @@ static void load_comp(Scene *s, Comp *c)
         c->frame_count = 1;
     c->state = ST_NORMAL;
 
+    c->has_color = false;
+    c->color = 0;
+    {
+        DfmValue *cv = dfm_prop(src, "Color");
+        if (cv && cv->type == DFM_STR) {
+            uint32_t col;
+            if (named_color(cv->s, &col)) {
+                c->has_color = true;
+                c->color = col;
+            }
+        } else if (cv && (cv->type == DFM_INT || cv->type == DFM_FLOAT)) {
+            uint32_t v = (uint32_t)dfm_int(src, "Color", 0);
+            /* TColor is 0x00BBGGRR. */
+            c->has_color = true;
+            c->color = 0xFF000000u | ((v & 0xFF) << 16) |
+                       (((v >> 8) & 0xFF) << 8) | ((v >> 16) & 0xFF);
+        }
+    }
+
     c->modal_set = false;
     {
         DfmValue *mv = dfm_prop(src, "_ModalResult");
@@ -351,7 +402,8 @@ static void load_comp(Scene *s, Comp *c)
     if (surf) {
         int tw = 0, th = 0;
         bool mag = false;
-        c->tex = texture_from_surface(s->renderer, surf, &tw, &th, &mag);
+        bool key_black = (c->cls == CC_WYSUN || c->cls == CC_ANIM);
+        c->tex = texture_from_surface(s->renderer, surf, &tw, &th, &mag, key_black);
         SDL_DestroySurface(surf);
         if (c->tex) {
             c->tex_w = tw;
@@ -373,7 +425,7 @@ static void load_comp(Scene *s, Comp *c)
         c->mask = mask_from_blob(maskv, &c->mask_w, &c->mask_h, true, &shape);
         c->mask_shape = shape;
     }
-    if (c->cls == CC_MAPOWANIE)
+    if (c->cls == CC_MAPOWANIE || c->cls == CC_PRZESUN || c->mask_shape)
         apply_mask_alpha(s, c);
 
     /* Embedded WAVs. */
@@ -573,6 +625,30 @@ Scene *scene_load(SDL_Renderer *r, const char *data_root, int id)
     for (int i = 0; i < s->ncomps; i++)
         load_comp(s, &s->comps[i]);
 
+    /* YETI is the only Y word (scene 3135), but its two word arrows point
+       back at 3135 itself.  Point them at the Y letter playground instead.
+       The six unused Y hotspots in 2023 fall back to unrelated A words;
+       hide them.  This is the minimal YETI navigation fix. */
+    if (id == 3135) {
+        Comp *l = scene_find(s, "browWyrL");
+        Comp *r = scene_find(s, "browWyrP");
+        if (l) { l->modal_set = true; l->modal_result = 2023; l->auto_click_exit = true; }
+        if (r) { r->modal_set = true; r->modal_result = 2023; r->auto_click_exit = true; }
+    } else if (id == 2023) {
+        for (int i = 2; i <= 7; i++) {
+            char nm[8];
+            snprintf(nm, sizeof(nm), "Z%d", i);
+            Comp *c = scene_find(s, nm);
+            if (!c)
+                continue;
+            c->visible = false;
+            c->visible0 = false;
+            c->modal_set = false;
+            c->auto_click_exit = false;
+            c->hover_lock = true;
+        }
+    }
+
     /* Opt-in content fixes. The shipped data leaves IGLO (3046) outside the
        I arrow cycle because 3047 points left at 3050 and 3050 points right
        back at 3047. Re-link those two arrows so the cycle includes IGLO. */
@@ -588,6 +664,18 @@ Scene *scene_load(SDL_Renderer *r, const char *data_root, int id)
 
     modules_setup(s, data_root);
     scene_apply_cursor(s);
+
+    /* The original introduces an activity with its spoken instruction; the
+       HELP pencil replays the same cue.  The per-scene cue lives on kHelp's
+       _WaveClickFile (WAV/01.WAV, 02.WAV, …). */
+    if (s->module >= 10 && s->module <= 18) {
+        Comp *help = scene_find(s, "kHelp");
+        if (getenv("ABC_DEBUG"))
+            fprintf(stderr, "entry help %d: %s\n", s->id,
+                    (help && help->wav_click) ? "audio" : "silent");
+        if (help && help->wav_click)
+            audio_play(help->wav_click, 1.0f);
+    }
     free(data);
     log_info("scene %d loaded (%d components)", id, s->ncomps);
     return s;
@@ -608,6 +696,9 @@ void scene_free(Scene *s)
 {
     if (!s)
         return;
+    /* Do not let one-shots (word pronunciation, help, video sound) leak into
+       the next scene.  MIDI music is managed separately. */
+    audio_stop_all();
     for (int i = 0; i < s->ncomps; i++)
         comp_unload(&s->comps[i]);
     free(s->comps);
@@ -748,8 +839,15 @@ void comp_play_click(Scene *s, Comp *c)
 {
     MIX_Audio *a = NULL;
     if (c->state == ST_ABNORMAL) {
+        /* Hover-only components (e.g. the HELP pencil) are already in the
+           abnormal state when clicked.  They still use their normal click
+           file, not the generic/default player. */
         if (c->wav_click2)
             a = c->wav_click2;
+        else if (c->wav_click)
+            a = c->wav_click;
+        else if (c->wav_abnormal)
+            a = c->wav_abnormal;
         else if (c->wav_normal)
             a = c->wav_normal;
     } else {
@@ -757,7 +855,16 @@ void comp_play_click(Scene *s, Comp *c)
             a = c->wav_click;
         else if (c->wav_abnormal)
             a = c->wav_abnormal;
+        else if (c->wav_normal)
+            a = c->wav_normal;
     }
+    if (getenv("ABC_DEBUG"))
+        fprintf(stderr, "click %-12s state=%d audio=%s\n", c->name,
+                (int)c->state, a ? "yes" : (s->wav_default ? "default" : "none"));
+    /* A help cue may be several seconds long: restart it instead of layering
+       another copy on top of the one already playing. */
+    if (str_ieq(c->name, "kHelp"))
+        audio_stop_all();
     if (a)
         audio_play(a, 1.0f);
     else if (s->wav_default)
@@ -906,6 +1013,19 @@ static void anim_update(Scene *s)
     }
 }
 
+static void restart_scene_music(Scene *s)
+{
+    if (!s->video_stop_music)
+        return;
+    s->video_stop_music = false;
+    if (s->nmusic <= 0)
+        return;
+    const char *paths[4];
+    for (int i = 0; i < s->nmusic; i++)
+        paths[i] = s->music_paths[i];
+    audio_music_play(paths, s->nmusic, true, s->music_sig);
+}
+
 void scene_update(Scene *s, float dt)
 {
     s->now = SDL_GetTicks();
@@ -938,6 +1058,7 @@ void scene_update(Scene *s, float dt)
     if (s->video && !video_tick(s->video, s->now)) {
         video_close(s->video);
         s->video = NULL;
+        restart_scene_music(s);
     }
     if (s->video_until && s->now >= s->video_until)
         s->video_until = 0;
@@ -972,8 +1093,25 @@ static void render_comp(Scene *s, Comp *c)
     if (getenv("ABC_DEBUG"))
         fprintf(stderr, "draw %-12s vis=%d tex=%p state=%d sel=%d\n", c->name,
                 (int)c->visible, (void *)c->tex, (int)c->state, comp_frame_selector(c));
-    if (!c->visible || !c->tex)
+    if (!c->visible)
         return;
+    if (!c->tex) {
+        /* Components without a bitmap can still have a VCL Color; the puzzle
+           slots (p01…p14) are red rectangles. */
+        if (c->has_color && c->cls == CC_ZAMIEN && s->module == 11 &&
+            c->name[0] == 'p' && isdigit((unsigned char)c->name[1])) {
+            SDL_FRect r;
+            comp_rect(s, c, &r);
+            /* The red puzzle cells have black grid lines around them. */
+            SDL_FRect border = {r.x - 2, r.y - 2, r.w + 4, r.h + 4};
+            SDL_SetRenderDrawColor(s->renderer, 0, 0, 0, 255);
+            SDL_RenderFillRect(s->renderer, &border);
+            SDL_SetRenderDrawColor(s->renderer, (c->color >> 16) & 0xFF,
+                                   (c->color >> 8) & 0xFF, c->color & 0xFF, 255);
+            SDL_RenderFillRect(s->renderer, &r);
+        }
+        return;
+    }
     int sel = comp_frame_selector(c);
     if (sel < 0)
         return;
@@ -1072,6 +1210,7 @@ bool scene_click(Scene *s, int x, int y)
         video_close(s->video);
         s->video = NULL;
         s->video_until = 0;
+        restart_scene_music(s);
         return true;
     }
     if (s->info_overlay) {
@@ -1083,6 +1222,8 @@ bool scene_click(Scene *s, int x, int y)
         return true;
     }
     Comp *hit = scene_hit(s, x, y);
+    if (getenv("ABC_DEBUG"))
+        fprintf(stderr, "scene click %d,%d -> %s\n", x, y, hit ? hit->name : "-");
     if (modules_click(s, x, y, hit))
         return true;
     if (!hit)

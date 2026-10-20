@@ -258,6 +258,16 @@ void audio_play(MIX_Audio *a, float gain)
     MIX_PlayTrack(tracks[pick], 0);
 }
 
+void audio_stop_all(void)
+{
+    if (!audio_enabled)
+        return;
+    for (int i = 0; i < AUDIO_TRACKS; i++) {
+        if (tracks[i])
+            MIX_StopTrack(tracks[i], 0);
+    }
+}
+
 void audio_tick(void)
 {
     (void)0;
@@ -297,6 +307,13 @@ void audio_music_play(const char *const *paths, int count, bool random_loop, con
         fluid_player_stop(fs_player);
         delete_fluid_player(fs_player);
         fs_player = NULL;
+    }
+    /* Kill residual notes and buffered audio from the previous playlist. */
+    fluid_synth_all_sounds_off(fs_synth, -1);
+    if (fs_stream) {
+        SDL_LockAudioStream(fs_stream);
+        SDL_ClearAudioStream(fs_stream);
+        SDL_UnlockAudioStream(fs_stream);
     }
     int order[16];
     if (count > 16)

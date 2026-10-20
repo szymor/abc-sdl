@@ -1,0 +1,9 @@
+# Task instruction on entry + HELP replay.  Run with ABC_DEBUG=1 and audio
+# enabled (SDL_AUDIODRIVER=dummy is fine) to see the "audio=yes" markers.
+scene 10005
+wait 250
+move 560 400
+wait 800
+click 510 430
+wait 250
+dump

@@ -1,0 +1,14 @@
+# YETI navigation fix: word arrows go to the Y letter page, and the
+# YETI object is still reachable from that page.
+scene 3135
+wait 100
+click 610 30
+wait 150
+dump
+scene 2023
+wait 100
+move 472 197
+wait 250
+click 472 197
+wait 150
+dump

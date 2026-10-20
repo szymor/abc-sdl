@@ -47,6 +47,8 @@ typedef struct Comp {
 
     int normal, abnormal, special;
     CompState state;
+    bool has_color;
+    uint32_t color;
 
     SDL_Texture *tex;
     int tex_w, tex_h, frame_w, frame_h, frame_count;
@@ -155,6 +157,7 @@ typedef struct Scene {
     /* Overlays */
     VideoPlayer *video;
     bool video_fullscreen;
+    bool video_stop_music;
     uint64_t video_until;
     char video_label[128];
     SDL_Rect video_rect;

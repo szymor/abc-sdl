@@ -21,7 +21,7 @@ The reverse-engineering specification this port is based on lives in
 | DFM/FRM parser | complete — all **294 scenes / 6330 component streams** parse with 0 errors |
 | Scene manager | complete — ID-driven navigation, 640×480 logical canvas, letterboxed scaling |
 | Splash (Winietka) | complete — 4 s timer, click to skip |
-| Train hub (Ciuchcia) | complete — 24 calibrated wagon hitboxes, edge scrolling, mouse wheel, exit, credits placeholder |
+| Train hub (Ciuchcia) | complete — 24 calibrated wagon hitboxes, edge scrolling, mouse wheel, exit, credits video |
 | Letter playground (Literka) | complete — hover-reveal objects, all 24 letters, touch-friendly reveal-first click |
 | Word screen (Telewizorek) | complete — titles, sprites, word arrows, letter buttons, train icon, MIDI |
 | Colouring book (Kolorowanka) | complete — 14-colour palette, flood fill, reset, PNG export |
@@ -30,7 +30,7 @@ The reverse-engineering specification this port is based on lives in
 | Spot the difference (Szczegoly) | complete — paired differences, highlights, completion |
 | Maze (Labirynt) | complete — 1-bpp collision map, cursor-following player, good/bad exits |
 | Zgadywanka 1–4 | complete — all 35 scenes, counters and feedback |
-| Audio | WAV one-shots (SDL3_mixer) + shuffled MIDI playlists (FluidSynth) |
+| Audio | WAV one-shots + spoken task cues (SDL3_mixer), shuffled MIDI playlists (FluidSynth); one-shots are stopped on scene transitions |
 | Video (AVI) | complete — Cinepak/MSVideo1/Indeo3 decoded by FFmpeg into the `TEkran` rect, with audio |
 | Cursors (`PEDZEL`, `LIT_*`) | brush cursor extracted from `ABC.EXE`; the maze draws the word's letter as a sprite (the `LIT_*` resources are available in `src/cursors_data.h`) |
 | Printing | exports a PNG instead of GDI printing |
@@ -164,15 +164,37 @@ quirks cannot flip the meaning of the mask:
 
 ## Content fidelity
 
-The port **reproduces the original disc's content unchanged** by default:
+The port follows the original disc's data, with the explicitly requested
+navigation/media fixes listed below:
 
 * word 46 `IGLO` remains unreachable (no letter/arrow link) unless
   `--fix-content` is given, which re-links the I arrow cycle;
 * word 113 does not exist;
-* YETI is word 135, after the Z words;
-* unused letter hotspots keep their fallback links to words 1/5;
-* the three missing AVIs (`4_1`, `46_2`, `135_1`) disable their buttons;
-* words 6 and 135 still reference the same `9_2.AVI`.
+* YETI is still word 135, after the Z words;
+* unused letter hotspots in the other letters keep their fallback links to
+  words 1/5.
+
+Requested fixes that are active by default:
+
+* **YETI navigation:** the YETI word screen's two arrows now lead back to the
+  Y letter playground (2023) instead of reloading 3135, and the six bogus
+  fallback hotspots in 2023 are hidden.
+* **Absent/reused clips:** a film/photo button is enabled only if the clip
+  belonging to that word (`<word>_1.AVI` / `<word>_2.AVI`) exists. This
+  disables `4_1`, `46_2`, `135_1` and also stops words 6 and 135 from playing
+  the unrelated `9_2.AVI` (the ladybird) through their photo buttons.
+* **Puzzle board:** the `p01…p14` slots are filled with their VCL `Color` and
+  a black grid, matching the original red board instead of showing the word
+  picture through the cells.
+* **Transparency:** the train strip and the pencil toolbar use their masks /
+  black key so the scenery shows through; shape masks (e.g. the pineapple in
+  letter A) are applied as alpha.
+* **Task instructions:** entering a game scene plays the same spoken cue as
+  its HELP pencil (`WAV/01.WAV`, `02.WAV`, …), and HELP now reliably replays
+  it instead of the generic sound. The cue is restarted rather than layered.
+* **Video/audio:** video frames are scheduled by PTS so long clips stay in
+  sync with their audio; leaving a scene or closing a video stops its sound,
+  and the old MIDI playlist is silenced and flushed before a new one starts.
 
 Where the original data is ambiguous, the port uses the observable behaviour
 and documents the inference:
@@ -188,7 +210,10 @@ and documents the inference:
 * **Skladanka** — a part's `_BMPNumerSpecial` selects which frame of the target
   part is shown after a valid `_MapHS` drop.
 * **Puzzle** — pieces `kNN` and slots `pNN` pair by index; the tray state keeps
-  the original magenta key rectangle, as the analysis notes it may.
+  the original magenta key rectangle, as the original does, and the board uses
+  the per-cell VCL colours plus black grid lines.
+* **Spot the difference** — found pairs are highlighted with the components'
+  `Color` (red) outlines on both pictures.
 
 ---
 
@@ -196,8 +221,8 @@ and documents the inference:
 
 A headless regression suite lives in [`tests/run.sh`](tests/run.sh). It checks
 the parser counts, loads and renders every scene, walks the train→letter→word
-→game→word flow, completes every activity, verifies the IGLO fix, and plays
-video clips:
+→game→word flow, completes every activity, verifies the YETI fix, absent-clip
+handling and task-cue playback, checks the IGLO fix, and plays video clips:
 
 ```bash
 DATA=../abc-re/abc tests/run.sh
@@ -253,8 +278,10 @@ AVI clips are demuxed and decoded with FFmpeg. Video frames are scaled into
 the scene's `TEkran` rectangle (320×240 in the original layout); the credits
 clip (`AUTORZY.AVI`) plays full-screen from the train hub's rabbit. The
 stream's audio is decoded once to 44.1 kHz stereo PCM and played through the
-same mixer as the WAV one-shots. When FFmpeg is unavailable at build time the
-old placeholder card is used instead.
+same mixer as the WAV one-shots. Frame presentation is driven by the stream's
+PTS (not a fixed frame counter), so long clips remain in sync; closing the
+video or changing scenes stops its audio. When FFmpeg is unavailable at build
+time the old placeholder card is used instead.
 
 ## Cursors
 
@@ -272,4 +299,4 @@ pointer; the extracted `LIT_*` arrays are ready for a future cursor mode.
 2. **Polish glyphs in the tiny font** (currently ASCII only) and a proper
    print dialog/export layout.
 3. Extend the optional `--fix-content` pack (IGLO re-link is implemented;
-   YETI numbering, duplicate/missing clips and bogus fallback links remain).
+   YETI renumbering and the remaining fallback links are still original data).

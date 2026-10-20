@@ -12,6 +12,7 @@ MIX_Audio *audio_load_file(const char *path);
 MIX_Audio *audio_load_mem(const void *data, int len);
 void audio_free_mem(MIX_Audio *a);
 void audio_play(MIX_Audio *a, float gain);
+void audio_stop_all(void);
 
 /* Background MIDI playlist. Stops the previous one if the signature differs. */
 void audio_music_play(const char *const *paths, int count, bool random_loop, const char *signature);

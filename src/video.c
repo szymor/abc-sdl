@@ -26,6 +26,10 @@ struct VideoPlayer {
     bool eof;
     bool sent_flush;
     double fps;
+    double time_base;
+    int64_t first_pts;
+    double frame_pts_ms;
+    uint64_t start_ms;
     uint64_t next_ms;
     uint64_t frame_ms;
 #endif
@@ -201,6 +205,18 @@ static bool decode_next(VideoPlayer *v)
         }
     }
 convert:
+    {
+        int64_t pts = v->frame->best_effort_timestamp;
+        if (pts == AV_NOPTS_VALUE)
+            pts = v->frame->pts;
+        if (pts != AV_NOPTS_VALUE && v->time_base > 0.0) {
+            if (v->first_pts == AV_NOPTS_VALUE)
+                v->first_pts = pts;
+            v->frame_pts_ms = (double)(pts - v->first_pts) * 1000.0 * v->time_base;
+        } else {
+            v->frame_pts_ms += (double)v->frame_ms;
+        }
+    }
     sws_scale(v->sws, (const uint8_t *const *)v->frame->data, v->frame->linesize,
               0, v->vctx->height, v->rgba->data, v->rgba->linesize);
     SDL_UpdateTexture(v->tex, NULL, v->rgba->data[0], v->rgba->linesize[0]);
@@ -285,6 +301,9 @@ VideoPlayer *video_open(SDL_Renderer *renderer, const char *path)
     v->frame_ms = (uint64_t)(1000.0 / v->fps + 0.5);
     if (v->frame_ms < 40)
         v->frame_ms = 40;
+    v->time_base = av_q2d(st->time_base);
+    v->first_pts = AV_NOPTS_VALUE;
+    v->frame_pts_ms = 0.0;
 
     v->audio = decode_audio(fmt);
     v->has_audio = v->audio != NULL;
@@ -304,9 +323,13 @@ VideoPlayer *video_open(SDL_Renderer *renderer, const char *path)
         video_close(v);
         return NULL;
     }
-    v->next_ms = SDL_GetTicks() + v->frame_ms;
+    /* Start the audio and the video clock together.  Subsequent frames are
+       scheduled by their PTS, not by a fixed frame counter, so long clips do
+       not drift away from the audio. */
+    v->start_ms = SDL_GetTicks();
     if (v->audio)
         audio_play(v->audio, 1.0f);
+    v->next_ms = v->start_ms + v->frame_ms;
     return v;
 #else
     (void)renderer;
@@ -326,9 +349,12 @@ bool video_tick(VideoPlayer *v, uint64_t now_ms)
         v->finished = true;
         return false;
     }
-    v->next_ms += v->frame_ms;
+    v->next_ms = v->start_ms + (uint64_t)(v->frame_pts_ms + (double)v->frame_ms);
     if (v->next_ms < now_ms)
-        v->next_ms = now_ms + v->frame_ms;
+        v->next_ms = now_ms;
+    if (getenv("ABC_DEBUG"))
+        fprintf(stderr, "video frame %.0f ms, wall %.0f ms\n",
+                v->frame_pts_ms, (double)(now_ms - v->start_ms));
     return true;
 #else
     (void)v;
@@ -352,6 +378,8 @@ void video_close(VideoPlayer *v)
 {
     if (!v)
         return;
+    /* Stop the video's audio (and any other one-shot overlapping it). */
+    audio_stop_all();
 #ifdef HAVE_FFMPEG
     if (v->tex)
         SDL_DestroyTexture(v->tex);

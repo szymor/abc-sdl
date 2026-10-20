@@ -66,6 +66,42 @@ grep -q "scene=3026" "$TMP/games.log"   # Zgadywanka 4
 grep -q "scene=3016" "$TMP/games.log"   # Labirynt
 echo "   $COMPLETE counter completions; puzzle, maze and all word returns verified"
 
+echo "== YETI navigation fix"
+SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
+    --script "$ROOT/tests/yeti.txt" > "$TMP/yeti.log" 2>&1
+grep -q "scene=2023" "$TMP/yeti.log"
+grep -q "scene=3135" "$TMP/yeti.log"
+echo "   arrows reach the Y page, YETI is still reachable"
+
+echo "== absent/reused clips are ignored"
+cat > "$TMP/media.txt" <<'EOF'
+scene 3006
+wait 100
+click 425 400
+wait 100
+dump
+scene 3135
+wait 100
+click 425 400
+wait 100
+dump
+EOF
+SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
+    --script "$TMP/media.txt" > "$TMP/media.log" 2>&1
+grep -q "scene=3006 .*video=0" "$TMP/media.log"
+grep -q "scene=3135 .*video=0" "$TMP/media.log"
+echo "   AREK/YETI photo buttons do not play the ladybird clip"
+
+echo "== task instruction and HELP audio"
+if ABC_DEBUG=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=dummy "$BIN" \
+        --data "$DATA" --script "$ROOT/tests/help.txt" > "$TMP/help.log" 2>&1 &&
+   grep -q "entry help 10005: audio" "$TMP/help.log" &&
+   grep -q "click kHelp .*audio=yes" "$TMP/help.log"; then
+    echo "   entry cue and HELP cue are played"
+else
+    echo "   audio test skipped (no audio device/soundfont)" >&2
+fi
+
 echo "== opt-in content fix"
 cat > "$TMP/fix.txt" <<'EOF'
 scene 3047

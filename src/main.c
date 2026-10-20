@@ -357,9 +357,9 @@ static int run_script(SDL_Renderer *r, SDL_Texture *canvas, const char *root,
                 continue;
             scene_set_player(s, x, y);
         } else if (strcmp(op, "dump") == 0) {
-            printf("scene=%d found=%d target=%d sel=%d complete=%d player=%d,%d request=%d\n",
+            printf("scene=%d found=%d target=%d sel=%d complete=%d player=%d,%d video=%d request=%d\n",
                    s->id, s->found_count, s->target_count, s->selected_idx,
-                   (int)s->complete, s->player_x, s->player_y,
+                   (int)s->complete, s->player_x, s->player_y, s->video ? 1 : 0,
                    s->request_pending ? s->request_id : 0);
         } else if (strcmp(op, "scene") == 0) {
             if (sscanf(p, "%*s %d", &x) != 1)

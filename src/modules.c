@@ -379,20 +379,34 @@ void modules_setup(Scene *s, const char *data_root)
     if (s->module == 3) {
         static const char *buttons[3] = {"KlTabl", "KlKamera", "KlAparat"};
         static const char *media[3] = {"aviLit", "aviFilm", "aviFoto"};
+        int word = s->id % 1000;
         for (int i = 0; i < 3; i++) {
             Comp *b = scene_find(s, buttons[i]);
             const char *f = media_file(s, media[i]);
-            if (!b || !f) {
-                if (b)
-                    b->disabled = true;
+            if (!b) {
                 continue;
             }
-            char *p = resolve_asset(s->data_root, f);
-            b->disabled = !file_exists(p);
-            if (getenv("ABC_DEBUG"))
-                fprintf(stderr, "media %s <- %s (%s) disabled=%d\n",
-                        buttons[i], f, p, (int)b->disabled);
-            free(p);
+            /* Film/photo must be the clip belonging to this word.  The disc
+               data reuses 9_2.AVI for words 6 and 135; treat a missing
+               <word>_1/<word>_2 clip as an absent button instead of playing
+               an unrelated clip. */
+            char expected[64];
+            const char *check = f;
+            if (i == 1 || i == 2) {
+                snprintf(expected, sizeof(expected), "\\AVI\\%d_%d.AVI",
+                         word, i);
+                check = expected;
+            }
+            bool exists = false;
+            if (f && check) {
+                char *p = resolve_asset(s->data_root, check);
+                exists = file_exists(p);
+                if (getenv("ABC_DEBUG"))
+                    fprintf(stderr, "media %s <- %s (%s) disabled=%d\n",
+                            buttons[i], check, p, (int)!exists);
+                free(p);
+            }
+            b->disabled = !exists;
         }
     }
 
@@ -1112,6 +1126,12 @@ static bool train_click(Scene *s, int x, int y, Comp *hit)
         if (file_exists(path)) {
             s->video = video_open(s->renderer, path);
             s->video_fullscreen = true;
+            if (s->video) {
+                /* The credits clip has its own soundtrack; the train music
+                   resumes when the clip ends or is dismissed. */
+                audio_music_stop();
+                s->video_stop_music = true;
+            }
         }
         free(path);
         if (!s->video)
@@ -1139,24 +1159,33 @@ static bool tv_click(Scene *s, int x, int y, Comp *hit)
         return false;
     const char *which = NULL;
     const char *label = NULL;
+    char expected[64];
+    int word = s->id % 1000;
     if (str_ieq(hit->name, "KlTabl")) {
         which = media_file(s, "aviLit");
         label = "LITERA";
     } else if (str_ieq(hit->name, "KlKamera")) {
-        which = media_file(s, "aviFilm");
+        snprintf(expected, sizeof(expected), "\\AVI\\%d_1.AVI", word);
+        which = expected;
         label = "FILM";
     } else if (str_ieq(hit->name, "KlAparat")) {
-        which = media_file(s, "aviFoto");
+        snprintf(expected, sizeof(expected), "\\AVI\\%d_2.AVI", word);
+        which = expected;
         label = "FOTO";
     }
     if (!which)
-        return false;
+        return false; /* not a media button: let the generic handler run */
+    /* Missing or foreign clip: ignore the click (the button is drawn yellow). */
+    if (hit->disabled) {
+        if (getenv("ABC_DEBUG"))
+            fprintf(stderr, "disabled TV button %s ignored\n", hit->name);
+        return true;
+    }
     char *path = resolve_asset(s->data_root, which);
     bool exists = file_exists(path);
     click_visual(s, hit);
     if (!exists) {
         free(path);
-        play_bad(s);
         return true;
     }
     Comp *ekran = scene_find(s, "Ekran");
@@ -1380,7 +1409,13 @@ void modules_render_overlay(Scene *s)
                     continue;
                 SDL_Rect rc = clamped_rect(s, c);
                 rc.x -= 2; rc.y -= 2; rc.w += 4; rc.h += 4;
-                outline_rect(r, rc, 255, 220, 40, 3);
+                Uint8 cr = 255, cg = 40, cb = 40;
+                if (c->has_color) {
+                    cr = (c->color >> 16) & 0xFF;
+                    cg = (c->color >> 8) & 0xFF;
+                    cb = c->color & 0xFF;
+                }
+                outline_rect(r, rc, cr, cg, cb, 3);
             }
         }
         break;
