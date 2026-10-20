@@ -197,6 +197,12 @@ Requested fixes that are active by default:
 * **Video/audio:** video frames are scheduled by PTS so long clips stay in
   sync with their audio; leaving a scene or closing a video stops its sound,
   and the old MIDI playlist is silenced and flushed before a new one starts.
+* **Activity completion:** a solved game now stays on its completed screen;
+  the child leaves with the blue `kBack` pencil (or the train icon where
+  present). There is no automatic return to the word scene.
+* **Correct-answer feedback:** Zgadywanka 1 plays the correct hotspot's cue
+  (`WAV/1d.WAV`, …) instead of the empty `waveK` player, so ADAPTER and the
+  other association pages give spoken feedback.
 
 Where the original data is ambiguous, the port uses the observable behaviour
 and documents the inference:

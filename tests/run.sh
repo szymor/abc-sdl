@@ -46,7 +46,9 @@ SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
 grep -q "scene=2001" "$TMP/flows.log"
 grep -q "scene=3001" "$TMP/flows.log"
 grep -q "scene=15001" "$TMP/flows.log"
-echo "   train → letter → word → game → word"
+grep -q "scene=15001 .*complete=1" "$TMP/flows.log"
+grep -q "scene=3001 .*complete=0" "$TMP/flows.log"
+echo "   train → letter → word → game → stays → kBack → word"
 
 echo "== game completions"
 SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
@@ -57,13 +59,20 @@ if [ "$COMPLETE" -lt 6 ]; then
     grep "complete=" "$TMP/games.log" >&2
     exit 1
 fi
-grep -q "scene=3002" "$TMP/games.log"   # Puzzle
-grep -q "scene=3022" "$TMP/games.log"   # Szczegoly
-grep -q "scene=3007" "$TMP/games.log"   # Skladanka
-grep -q "scene=3010" "$TMP/games.log"   # Zgadywanka 2
-grep -q "scene=3012" "$TMP/games.log"   # Zgadywanka 3
-grep -q "scene=3026" "$TMP/games.log"   # Zgadywanka 4
-grep -q "scene=3016" "$TMP/games.log"   # Labirynt
+grep -q "scene=11002 .*complete=1" "$TMP/games.log"  # stays in puzzle
+grep -q "scene=13022 .*complete=1" "$TMP/games.log"  # stays in diff
+grep -q "scene=12007 .*complete=1" "$TMP/games.log"  # stays in assemble
+grep -q "scene=16010 .*complete=1" "$TMP/games.log"  # stays in Zg2
+grep -q "scene=17012 .*complete=1" "$TMP/games.log"  # stays in Zg3
+grep -q "scene=18026 .*complete=1" "$TMP/games.log"  # stays in Zg4
+grep -q "scene=14016 .*complete=1" "$TMP/games.log"  # stays in maze
+grep -q "scene=3002" "$TMP/games.log"   # Puzzle kBack
+grep -q "scene=3022" "$TMP/games.log"   # Szczegoly kBack
+grep -q "scene=3007" "$TMP/games.log"   # Skladanka kBack
+grep -q "scene=3010" "$TMP/games.log"   # Zgadywanka 2 kBack
+grep -q "scene=3012" "$TMP/games.log"   # Zgadywanka 3 kBack
+grep -q "scene=3026" "$TMP/games.log"   # Zgadywanka 4 kBack
+grep -q "scene=3016" "$TMP/games.log"   # Labirynt kBack
 echo "   $COMPLETE counter completions; puzzle, maze and all word returns verified"
 
 echo "== YETI navigation fix"

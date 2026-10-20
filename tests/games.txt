@@ -58,6 +58,11 @@ up 281 224
 dump
 wait 2200
 dump
+move 560 400
+wait 800
+click 620 430
+wait 200
+dump
 
 scene 13022
 wait 100
@@ -79,6 +84,11 @@ click 292 295
 dump
 wait 2200
 dump
+move 560 400
+wait 800
+click 620 430
+wait 200
+dump
 scene 16010
 wait 100
 click 60 406
@@ -86,6 +96,11 @@ click 200 416
 click 549 322
 dump
 wait 7000
+dump
+move 560 400
+wait 800
+click 620 430
+wait 200
 dump
 scene 17012
 wait 100
@@ -100,12 +115,22 @@ click 155 365
 dump
 wait 2200
 dump
+move 560 400
+wait 800
+click 620 430
+wait 200
+dump
 scene 18026
 wait 100
 click 310 313
 click 519 101
 dump
 wait 2200
+dump
+move 560 400
+wait 800
+click 620 430
+wait 200
 dump
 
 scene 12007
@@ -142,8 +167,18 @@ click 107 39
 dump
 wait 2200
 dump
+move 560 400
+wait 800
+click 620 430
+wait 200
+dump
 scene 14016
 wait 100
 player 460 235
 wait 2500
+dump
+move 560 400
+wait 800
+click 620 430
+wait 200
 dump

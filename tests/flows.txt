@@ -15,4 +15,9 @@ wait 200
 dump                 # -> 15001 Zgadywanka 1
 click 560 180        # correct object
 wait 9000
-dump                 # -> 3001 again
+dump                 # -> still 15001, complete
+move 560 400         # reveal the pencil toolbar
+wait 800
+click 620 430        # kBack
+wait 200
+dump                 # -> 3001

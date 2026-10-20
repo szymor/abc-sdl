@@ -754,6 +754,9 @@ static bool zg1_click(Scene *s, int x, int y, Comp *hit)
         int oi = comp_num(hit, 'o');
         int zi = comp_num(hit, 'z');
         if (oi > 0) {
+            /* o1 carries the correct-choice cue (WAV/1d.WAV).  waveK in this
+               scene is an empty player, so play the hotspot's own sound. */
+            comp_play_click(s, hit);
             Comp *anim = scene_find(s, "AnimOK");
             if (anim)
                 comp_anim_start(s, anim, true);
@@ -762,6 +765,7 @@ static bool zg1_click(Scene *s, int x, int y, Comp *hit)
             return true;
         }
         if (zi > 0) {
+            comp_play_click(s, hit);
             Comp *anim = scene_find(s, "AnimZle");
             if (anim)
                 comp_anim_start(s, anim, true);

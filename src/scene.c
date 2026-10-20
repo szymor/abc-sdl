@@ -1079,11 +1079,6 @@ void scene_update(Scene *s, float dt)
 
     modules_update(s, dt);
 
-    if (s->complete && s->request_id < 0) {
-        uint64_t due = s->complete_at + (uint64_t)s->complete_delay_ms;
-        if (s->now >= due && s->return_id > 0)
-            scene_request(s, s->return_id);
-    }
     if (s->video && !video_tick(s->video, s->now)) {
         video_close(s->video);
         s->video = NULL;
