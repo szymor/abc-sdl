@@ -1,0 +1,238 @@
+# Moje Pierwsze ABC — SDL3 re-implementation
+
+A from-scratch C11/SDL3 port of the 1996 Polish children's CD-ROM
+**Moje Pierwsze ABC** (“My First ABC”, OPTIMUS NEXUS / “WiT & Luk”).
+
+The original is a 16-bit Windows 3.1 / Delphi 1 application running at
+640×480 in 256 colours. This port is **data-driven**: it reads the original
+`FRM` scene files, embedded bitmaps and WAVs, and the `WAV/`, `MIDI/` and
+`AVI/` directories directly, and interprets the same component model at
+runtime. There is no per-scene code.
+
+The reverse-engineering specification this port is based on lives in
+[`abc-re/docs`](../abc-re/docs).
+
+---
+
+## Status
+
+| area | state |
+|------|-------|
+| DFM/FRM parser | complete — all **294 scenes / 6330 component streams** parse with 0 errors |
+| Scene manager | complete — ID-driven navigation, 640×480 logical canvas, letterboxed scaling |
+| Splash (Winietka) | complete — 4 s timer, click to skip |
+| Train hub (Ciuchcia) | complete — 24 calibrated wagon hitboxes, edge scrolling, mouse wheel, exit, credits placeholder |
+| Letter playground (Literka) | complete — hover-reveal objects, all 24 letters, touch-friendly reveal-first click |
+| Word screen (Telewizorek) | complete — titles, sprites, word arrows, letter buttons, train icon, MIDI |
+| Colouring book (Kolorowanka) | complete — 14-colour palette, flood fill, reset, PNG export |
+| Puzzle (Puzzle) | complete — drag or click-to-place, index pairing, completion |
+| Assemble (Skladanka) | complete — `_MapHS` validated drops, placed-part images, completion |
+| Spot the difference (Szczegoly) | complete — paired differences, highlights, completion |
+| Maze (Labirynt) | complete — 1-bpp collision map, cursor-following player, good/bad exits |
+| Zgadywanka 1–4 | complete — all 35 scenes, counters and feedback |
+| Audio | WAV one-shots (SDL3_mixer) + shuffled MIDI playlists (FluidSynth) |
+| Video (AVI) | **deferred** — buttons work and show a placeholder card; decode is the next milestone |
+| Cursors (`PEDZEL`, `LIT_*`) | not yet extracted; the maze draws a marker instead |
+| Printing | exports a PNG instead of GDI printing |
+
+Every scene was loaded and drawn in a headless pass (`--script` over all 294
+IDs) without errors. Every game module was driven to completion by scripted
+clicks and returned to the expected word scene.
+
+---
+
+## Build
+
+Requirements:
+
+* C11 compiler, CMake ≥ 3.20
+* SDL3, SDL3_image, SDL3_mixer
+* FluidSynth (optional, for MIDI music) + a GM soundfont
+
+On Arch:
+
+```bash
+sudo pacman -S base-devel cmake sdl3 sdl3_image sdl3_mixer fluidsynth \
+               soundfont-fluid
+```
+
+Build:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
+```
+
+## Run
+
+```bash
+./build/abc-sdl --data /path/to/abc
+```
+
+`--data` points at the extracted CD tree (the directory containing `FRM/`,
+`WAV/`, `MIDI/`, `AVI/`). If omitted, the app tries, in order:
+
+1. `$ABC_DATA`
+2. `Glowny=` in `ABC.INI` in the current directory
+3. `./abc`
+4. `../abc-re/abc`
+
+Default start scene is `100` (splash). Useful options:
+
+```
+--start ID        open a specific scene (e.g. 1001 train, 3016 CYMBALKI)
+--scale N         integer window scale (default 2)
+--fullscreen      start fullscreen
+--mute            disable audio
+--validate        parse all scenes and print statistics
+--shot ID         render one scene to a PNG and exit
+--out FILE        output for --shot
+--script FILE     replay a click script (see Testing)
+--fix-content     reserved for opt-in content fixes (currently no-op)
+```
+
+### Controls
+
+| input | action |
+|-------|--------|
+| mouse / click | interact |
+| hover | reveals objects in the letter playground; slides in the pencil toolbar at the bottom-right of games |
+| wheel / ← → (train) | scroll the train |
+| ESC | close overlay, go back one scene, or quit |
+| F11 | fullscreen |
+| F12 | save a screenshot to `screenshots/` |
+
+### Audio
+
+WAV playback uses SDL3_mixer. MIDI playlists are rendered with FluidSynth into
+an SDL audio stream. The first existing soundfont among
+`/usr/share/soundfonts/FluidR3_GM.sf2`, `SC-55`, `freepats`, … is used; set
+`ABC_SOUNDFONT=/path/file.sf2` to override.
+
+---
+
+## Project layout
+
+```
+src/main.c      args, scene manager loop, window/canvas scaling, script runner
+src/dfm.c       Delphi binary DFM (TPF0) parser
+src/scene.c     FRM loader → components, bitmaps/masks, rendering, hit testing,
+                generic component state machine, transitions
+src/modules.c   per-module behaviour for all 10 module families
+src/audio.c     WAV cache/one-shots, MIDI playlists (FluidSynth)
+src/font.c      tiny 5×7 bitmap font for placeholders and toasts
+src/util.c      file loading, case-insensitive Windows path resolution
+```
+
+The engine mirrors the original's component semantics:
+
+* `_BMPNumerNormal/Abnormal/Special` frame selectors (`-2` hidden, `0` = first
+  frame, 1-based otherwise).
+* `_AutoClickChange`, `_AutoMoveChange`, `_AutoClickExit`, `_ModalResult`.
+* `_WaveClickFile`, `_WaveClickFile2`, `_WaveAutoPlay`, embedded
+  `_WaveNormal/_WaveAbnormal/Wave.Data`.
+* `TWysunBMP` slide-in toolbar, `TAnimujBMP` frame sequences,
+  `TPrzesunBMP` computed strip, `TLabirynt`, `TSprawdzanie`,
+  `TMapowanie`/`TMapowHotSpot`, `TEkran`, `TRandomMediaPlayer`.
+
+Navigation is exactly the original model: a clicked component returns
+`_ModalResult` (the next scene ID), `9999` exits.
+
+### Bitmaps and masks
+
+BMPs are decoded with SDL and uploaded as nearest-neighbour textures. 1-bpp
+`_BMPMap*` blobs are parsed directly from their BMP payload so that palette
+quirks cannot flip the meaning of the mask:
+
+* the train's wagon hitboxes are derived from the 4050×145 mask (25 content
+  runs: locomotive + A…Z);
+* the maze's collision map is indexed in BMP/bottom-up row order, which is the
+  order its `wejscieX/Y` entrance coordinates expect;
+* sprite masks are used for mouse hit testing when they form a silhouette;
+* Skladanka placed parts use their mask as an alpha silhouette.
+
+---
+
+## Content fidelity
+
+The port **reproduces the original disc's content unchanged** by default:
+
+* word 46 `IGLO` remains unreachable (no letter/arrow link);
+* word 113 does not exist;
+* YETI is word 135, after the Z words;
+* unused letter hotspots keep their fallback links to words 1/5;
+* the three missing AVIs (`4_1`, `46_2`, `135_1`) disable their buttons;
+* words 6 and 135 still reference the same `9_2.AVI`.
+
+Where the original data is ambiguous, the port uses the observable behaviour
+and documents the inference:
+
+* **Zgadywanka 1** — visible `o_i` is the correct object, visible `z_i` are
+  distractors; correct plays `AnimOK`, wrong plays `AnimZle`.
+* **Zgadywanka 2** — `o_i` are the correct object hotspots, `n_i` the wrong
+  ones, `z_i` the result sprites revealed in the scene. When `_Licznik` is 0
+  the visible `o` count is used so the two affected pages stay playable.
+* **Zgadywanka 3** — `o_i` silhouettes and `z_i` objects pair by index.
+* **Zgadywanka 4** — visible `o_i` are the targets; `_Licznik = 100` is kept
+  as the original “no target” sentinel.
+* **Skladanka** — a part's `_BMPNumerSpecial` selects which frame of the target
+  part is shown after a valid `_MapHS` drop.
+* **Puzzle** — pieces `kNN` and slots `pNN` pair by index; the tray state keeps
+  the original magenta key rectangle, as the analysis notes it may.
+
+---
+
+## Testing
+
+Data validation (no window needed):
+
+```bash
+./build/abc-sdl --data ../abc-re/abc --validate
+# scenes: 294
+# streams: 6330
+# parse errors: 0
+```
+
+Render a scene:
+
+```bash
+SDL_VIDEODRIVER=dummy ./build/abc-sdl --data ../abc-re/abc --mute \
+    --shot 3016 --out /tmp/3016.png
+```
+
+Scripted interaction (headless). Commands: `scene ID`, `move X Y`,
+`click X Y`, `down/up X Y`, `wait MS`, `player X Y`, `render`, `dump`,
+`shot FILE`.
+
+```
+scene 1001
+wait 100
+click 317 308        # wagon A
+wait 200
+move 280 360         # hover the record player
+click 280 360        # open ADAPTER (3001)
+click 500 398        # KlGra → Zgadywanka 1 (15001)
+click 560 180        # correct answer
+wait 9000
+dump                 # back in 3001
+```
+
+```bash
+SDL_VIDEODRIVER=dummy ./build/abc-sdl --data ../abc-re/abc --mute \
+    --script /tmp/flow.txt
+```
+
+Set `ABC_DEBUG=1` for component-draw, palette and train-box diagnostics.
+
+---
+
+## Next milestones
+
+1. **AVI playback** — decode Cinepak / MSVideo1 / Indeo3 with FFmpeg into the
+   `TEkran` rectangle (the only deferred gameplay-visible feature).
+2. **Original cursors** — extract `RT_CURSOR` groups from `ABC.EXE`
+   (`PEDZEL`, `LIT_C`…) and use them for colouring/maze.
+3. **Polish glyphs in the tiny font** (currently ASCII only) and a proper
+   print dialog/export layout.
+4. Optional `--fix-content` pack: make IGLO reachable, repair the YETI
+   numbering and the duplicate/missing clips, disable bogus fallback links.
