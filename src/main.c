@@ -444,6 +444,7 @@ int main(int argc, char **argv)
     if (!opt.mute)
         audio_init();
 
+    scene_set_fix_content(opt.fix_content);
     log_info("data root: %s", opt.data_root);
 
     if (opt.script) {

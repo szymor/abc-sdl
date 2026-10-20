@@ -96,7 +96,7 @@ Default start scene is `100` (splash). Useful options:
 --shot ID         render one scene to a PNG and exit
 --out FILE        output for --shot
 --script FILE     replay a click script (see Testing)
---fix-content     reserved for opt-in content fixes (currently no-op)
+--fix-content     opt-in fixes: re-link the I arrows so IGLO (3046) is reachable
 ```
 
 ### Controls
@@ -166,7 +166,8 @@ quirks cannot flip the meaning of the mask:
 
 The port **reproduces the original disc's content unchanged** by default:
 
-* word 46 `IGLO` remains unreachable (no letter/arrow link);
+* word 46 `IGLO` remains unreachable (no letter/arrow link) unless
+  `--fix-content` is given, which re-links the I arrow cycle;
 * word 113 does not exist;
 * YETI is word 135, after the Z words;
 * unused letter hotspots keep their fallback links to words 1/5;
@@ -259,5 +260,5 @@ pointer; the extracted `LIT_*` arrays are ready for a future cursor mode.
    player letter should follow the pointer or replace it).
 2. **Polish glyphs in the tiny font** (currently ASCII only) and a proper
    print dialog/export layout.
-3. Optional `--fix-content` pack: make IGLO reachable, repair the YETI
-   numbering and the duplicate/missing clips, disable bogus fallback links.
+3. Extend the optional `--fix-content` pack (IGLO re-link is implemented;
+   YETI numbering, duplicate/missing clips and bogus fallback links remain).
