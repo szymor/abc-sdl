@@ -1271,6 +1271,13 @@ static void render_comp(Scene *s, Comp *c)
         return;
     }
     int sel = comp_frame_selector(c);
+    if (c->hover_only) {
+        /* Word-screen overlays live above the baked `tlo` art and are shown
+           only while hovered.  Their normal frame is the highlight image. */
+        if (c->state != ST_ABNORMAL)
+            return;
+        sel = c->normal;
+    }
     if (sel < 0)
         return;
     int frame = sel == 0 ? 1 : sel;

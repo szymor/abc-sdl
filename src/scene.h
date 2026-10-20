@@ -96,6 +96,7 @@ typedef struct Comp {
 
     /* Game bookkeeping */
     bool found, placed, selected, hover_lock, correct, disabled;
+    bool hover_only;          /* word screen overlay: draw only while hovered */
     int placed_by;            /* Skladanka: source part currently in this slot */
     bool hover_wave_pending;
     uint64_t hover_wave_at;

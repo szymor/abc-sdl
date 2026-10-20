@@ -389,6 +389,19 @@ void modules_setup(Scene *s, const char *data_root)
         }
     }
 
+    /* Telewizorek: the title syllables, upper/lower-case letters and the
+       object are highlight overlays.  The base art is baked into `tlo`;
+       the overlays only appear while the pointer is over them (the original
+       shows the whole title, then CYM-BAL-KI on hover). */
+    if (s->module == 3) {
+        static const char *overlays[] = {"sylaby", "duzaLit", "malaLit", "rzecz", NULL};
+        for (int i = 0; overlays[i]; i++) {
+            Comp *c = scene_find(s, overlays[i]);
+            if (c)
+                c->hover_only = true;
+        }
+    }
+
     /* Telewizorek: mark media buttons whose clip is absent (the original
        draws these yellow). */
     if (s->module == 3) {

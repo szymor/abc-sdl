@@ -203,6 +203,10 @@ Requested fixes that are active by default:
   when the last piece is in place. A piece dropped on the wrong slot returns
   to its normal tray frame and stays retryable; clicking it again selects it
   and restores normal interaction (no permanent gray state).
+* **Word-screen hover overlays:** `tlo` already contains the whole word, both
+  `Aa` forms and the object. The syllable strip, letter highlights and object
+  highlight are hover-only overlays: the title is shown whole at rest and
+  separates into syllables (`CYM BAL KI`) only while the pointer is over it.
 * **Puzzle borders and alignment:** the piece sheets use their per-scene
   corner colour as the VCL transparent colour, so the pink/purple/green
   borders no longer show between placed pieces. The placed frame's transparent

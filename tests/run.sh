@@ -191,6 +191,44 @@ SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute --fix-content \
 grep -q "scene=3046" "$TMP/fix1.log"
 echo "   IGLO is reachable with --fix-content"
 
+echo "== word screen hover overlays"
+cat > "$TMP/wordhover.txt" <<EOF
+scene 3016
+wait 100
+shot $TMP/word-rest.png
+move 317 36
+wait 200
+shot $TMP/word-title.png
+move 550 200
+wait 200
+shot $TMP/word-away.png
+move 55 327
+wait 200
+shot $TMP/word-letter.png
+move 116 164
+wait 200
+shot $TMP/word-object.png
+EOF
+SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
+    --script "$TMP/wordhover.txt" > "$TMP/wordhover.log" 2>&1
+if cmp -s "$TMP/word-rest.png" "$TMP/word-title.png"; then
+    echo "title hover did not show the syllable strip" >&2
+    exit 1
+fi
+if ! cmp -s "$TMP/word-rest.png" "$TMP/word-away.png"; then
+    echo "word screen did not return to its resting overlays" >&2
+    exit 1
+fi
+if cmp -s "$TMP/word-rest.png" "$TMP/word-letter.png"; then
+    echo "letter hover did not show the highlight overlay" >&2
+    exit 1
+fi
+if cmp -s "$TMP/word-rest.png" "$TMP/word-object.png"; then
+    echo "object hover did not show the highlight overlay" >&2
+    exit 1
+fi
+echo "   whole word at rest; syllables/letter/object appear on hover"
+
 echo "== video (best effort)"
 mkdir -p "$ROOT/tests/out"
 if SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
