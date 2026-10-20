@@ -135,6 +135,24 @@ else
     echo "   reset audio test skipped (no audio device)" >&2
 fi
 
+echo "== colouring palette and fill"
+cat > "$TMP/coloring.txt" <<'EOF'
+scene 10005
+wait 100
+click 530 203
+click 250 160
+wait 100
+dump
+EOF
+ABC_DEBUG=1 SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
+    --script "$TMP/coloring.txt" > "$TMP/coloring.log" 2>&1
+grep -q "palette 5: ffff0000" "$TMP/coloring.log"
+grep -q "palette 10: ff0000ff" "$TMP/coloring.log"
+grep -q "palette 14: ff5a0010" "$TMP/coloring.log"
+grep -q "palette click k5 -> 4 colour ffff0000" "$TMP/coloring.log"
+grep -q "flood fill ffff0000 -> [1-9][0-9]* px" "$TMP/coloring.log"
+echo "   swatch colours are sampled correctly and the fill stays coloured"
+
 echo "== wrong puzzle piece returns to tray"
 if ABC_DEBUG=1 SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
         --script "$ROOT/tests/gray.txt" > "$TMP/wrongpiece.log" 2>&1; then

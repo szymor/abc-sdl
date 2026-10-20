@@ -1150,25 +1150,15 @@ uint32_t scene_sample_bmp(DfmComponent *src)
     if (frames < 1)
         frames = 1;
     int fw = rgba->w / frames;
-    uint32_t best = 0;
-    int best_score = -1;
-    const int px[5] = {1, 3, 2, 3, 1};
-    const int py[5] = {1, 3, 2, 1, 3};
-    for (int i = 0; i < 5; i++) {
-        int x = fw * px[i] / 4;
-        int y = rgba->h * py[i] / 4;
-        if (x >= fw) x = fw - 1;
-        if (y >= rgba->h) y = rgba->h - 1;
-        uint32_t p = ((uint32_t *)rgba->pixels)[y * (rgba->pitch / 4) + x];
-        int r = (p >> 16) & 255, g = (p >> 8) & 255, b = p & 255;
-        int score = r + g + b - abs(r - g) - abs(g - b) - abs(r - b);
-        if (score > best_score) {
-            best_score = score;
-            best = p | 0xFF000000u;
-        }
-    }
+    /* Palette swatches are flat colour chips with a black outline.  Sample
+       the middle of the first frame; the old five-point/brightest-pixel
+       heuristic picked highlights or the pale tray background and made many
+       colours paint white. */
+    int x = fw / 2;
+    int y = rgba->h / 2;
+    uint32_t best = ((uint32_t *)rgba->pixels)[y * (rgba->pitch / 4) + x];
     SDL_DestroySurface(rgba);
-    return best;
+    return best | 0xFF000000u;
 }
 
 static void hover_update(Scene *s)

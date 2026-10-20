@@ -219,13 +219,7 @@ static void flood_fill(Scene *s, int sx, int sy, SDL_Rect *area)
         return;
     if (sx < area->x || sy < area->y || sx >= area->x + area->w || sy >= area->y + area->h)
         return;
-    uint32_t target = s->paint_px[sy * ABC_W + sx];
     uint32_t fill = s->palette[s->sel_color] | 0xFF000000u;
-    if ((target & 0x00FFFFFFu) == (fill & 0x00FFFFFFu))
-        return;
-    int tr = (target >> 16) & 255, tg = (target >> 8) & 255, tb = target & 255;
-    if (tr + tg + tb < 100)
-        return;
     int cap = ABC_W * ABC_H;
     int *stack = xmalloc((size_t)cap * sizeof(int));
     int sp = 0;
@@ -233,13 +227,16 @@ static void flood_fill(Scene *s, int sx, int sy, SDL_Rect *area)
     int filled = 0;
     while (sp > 0 && filled < cap) {
         int p = stack[--sp];
-        uint32_t c = s->paint_px[p];
-        if ((c & 0x00FFFFFFu) == (fill & 0x00FFFFFFu))
+        if ((s->paint_px[p] & 0x00FFFFFFu) == (fill & 0x00FFFFFFu))
             continue;
-        int r = (c >> 16) & 255, g = (c >> 8) & 255, b = c & 255;
-        if (r + g + b < 100)
-            continue;
-        if (abs(r - tr) + abs(g - tg) + abs(b - tb) > 150)
+        /* Use the original line-art as the barrier mask.  Only the black
+           core blocks the fill; the light anti-aliased halo around thick
+           lines is recoloured too, otherwise it remains as a bright rim.
+           Using the original bitmap also lets a previously coloured area be
+           recoloured even when the new colour is dark. */
+        uint32_t bg = s->paint_bg ? s->paint_bg[p] : s->paint_px[p];
+        int r = (bg >> 16) & 255, g = (bg >> 8) & 255, b = bg & 255;
+        if (r + g + b < 180)
             continue;
         s->paint_px[p] = fill;
         filled++;
@@ -256,6 +253,8 @@ static void flood_fill(Scene *s, int sx, int sy, SDL_Rect *area)
             break;
     }
     free(stack);
+    if (getenv("ABC_DEBUG"))
+        fprintf(stderr, "flood fill %08x -> %d px\n", fill, filled);
     s->paint_dirty = true;
 }
 
