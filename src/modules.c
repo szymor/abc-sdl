@@ -1465,17 +1465,9 @@ static void outline_rect(SDL_Renderer *r, SDL_Rect rc, Uint8 cr, Uint8 cg, Uint8
 void modules_render_overlay(Scene *s)
 {
     SDL_Renderer *r = s->renderer;
-    for (int i = 0; i < s->ncomps; i++) {
-        Comp *c = &s->comps[i];
-        if (!c->disabled || !c->visible)
-            continue;
-        SDL_FRect rc;
-        comp_rect(s, c, &rc);
-        SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
-        SDL_SetRenderDrawColor(r, 245, 210, 30, 110);
-        SDL_RenderFillRect(r, &rc);
-        SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
-    }
+    /* Missing TV clips already have a flat yellow placeholder baked into
+       `tlo`.  Do not tint the hotspot on top: the translucent rectangle
+       makes the placeholder lighter and its bounds visible. */
     switch (s->module) {
     case 10:
         if (s->palette_n > 0 && s->sel_color >= 0 && s->sel_color < s->palette_n) {

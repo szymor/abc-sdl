@@ -186,7 +186,9 @@ Requested fixes that are active by default:
 * **Absent/reused clips:** a film/photo button is enabled only if the clip
   belonging to that word (`<word>_1.AVI` / `<word>_2.AVI`) exists. This
   disables `4_1`, `46_2`, `135_1` and also stops words 6 and 135 from playing
-  the unrelated `9_2.AVI` (the ladybird) through their photo buttons.
+  the unrelated `9_2.AVI` (the ladybird) through their photo buttons. Disabled
+  buttons use the flat yellow placeholder baked into `tlo`; no translucent
+  hotspot tint is drawn over it.
 * **Puzzle board:** the `p01…p14` slots are filled with their VCL `Color` and
   a black grid, matching the original red board instead of showing the word
   picture through the cells.
