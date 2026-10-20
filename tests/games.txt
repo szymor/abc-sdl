@@ -135,41 +135,39 @@ dump
 
 scene 12007
 wait 100
+# One click per tray part: the original places it immediately.
+click 241 42
+click 566 253
 click 509 49
-click 36 119
+click 329 41
+click 568 336
+click 106 44
+wait 200
+dump
+# A second car-body choice replaces m3 without double-counting; clicking
+# the same part again takes it back out.
+click 321 433
+wait 200
 dump
 click 321 433
-click 36 119
+wait 200
 dump
-click 568 336
-click 189 138
-dump
-click 93 430
-click 189 138
-dump
-click 329 41
-click 342 114
-dump
-click 488 278
-click 342 114
-dump
-click 566 253
-click 297 178
-dump
-click 241 42
-click 95 177
-dump
-click 106 44
-click 107 39
-dump
-click 537 154
-click 107 39
-dump
-wait 2200
+click 321 433
+wait 200
 dump
 move 560 400
 wait 800
 click 620 430
+wait 200
+dump
+scene 12062
+wait 100
+# s5 (m1) lies completely under s3's hotspot; the topmost part must win.
+click 330 114
+click 409 216
+click 500 220
+click 436 8
+click 599 183
 wait 200
 dump
 scene 14016

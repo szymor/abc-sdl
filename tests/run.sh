@@ -61,7 +61,15 @@ if [ "$COMPLETE" -lt 6 ]; then
 fi
 grep -q "scene=11002 .*complete=1" "$TMP/games.log"  # stays in puzzle
 grep -q "scene=13022 .*complete=1" "$TMP/games.log"  # stays in diff
-grep -q "scene=12007 .*complete=1" "$TMP/games.log"  # stays in assemble
+grep -q "scene=12007 .*found=6 target=6 .*complete=1" "$TMP/games.log"  # six slots
+grep -q "scene=12062 .*found=4 target=4 .*complete=1" "$TMP/games.log"  # z-order
+ASSEMBLE=$(grep -c "scene=12007 .*found=6 target=6 .*complete=1" "$TMP/games.log" || true)
+if [ "$ASSEMBLE" -lt 2 ]; then
+    echo "Skladanka replacement double-counted or lost completion" >&2
+    grep "scene=12007" "$TMP/games.log" >&2
+    exit 1
+fi
+grep -q "scene=12007 .*found=5 target=6 .*complete=0" "$TMP/games.log"  # part removed again
 grep -q "scene=16010 .*complete=1" "$TMP/games.log"  # stays in Zg2
 grep -q "scene=17012 .*complete=1" "$TMP/games.log"  # stays in Zg3
 grep -q "scene=18026 .*complete=1" "$TMP/games.log"  # stays in Zg4

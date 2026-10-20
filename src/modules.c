@@ -268,6 +268,7 @@ static void reset_game(Scene *s)
         Comp *c = &s->comps[i];
         c->state = ST_NORMAL;
         c->found = c->placed = c->selected = false;
+        c->placed_by = 0;
         c->hover_lock = false;
         c->hover_wave_pending = false;
         c->anim_playing = false;
@@ -449,10 +450,24 @@ void modules_setup(Scene *s, const char *data_root)
     }
 
     if (s->module == 12) {
+        /* Completion means every target region is filled.  Several parts
+           can be alternatives for one target (AUTO has six targets and ten
+           usable parts), so count distinct target names, not parts. */
+        char names[16][24];
         int n = 0;
-        for (int i = 0; i < s->ncomps; i++)
-            if (s->comps[i].cls == CC_MAPOW && s->comps[i].nmaphs > 0)
-                n++;
+        for (int i = 0; i < s->ncomps; i++) {
+            Comp *c = &s->comps[i];
+            if (c->cls != CC_MAPOW)
+                continue;
+            for (int k = 0; k < c->nmaphs; k++) {
+                bool seen = false;
+                for (int j = 0; j < n; j++)
+                    if (str_ieq(names[j], c->maphs[k]))
+                        seen = true;
+                if (!seen && n < 16)
+                    snprintf(names[n++], sizeof(names[0]), "%s", c->maphs[k]);
+            }
+        }
         s->target_count = n;
     }
 
@@ -643,114 +658,91 @@ static bool skladanka_click(Scene *s, int x, int y, Comp *hit)
     if (hit && hit->cls == CC_WYSUN)
         return false;
     if (getenv("ABC_DEBUG"))
-        fprintf(stderr, "skladanka click %d,%d hit=%s sel=%d\n", x, y,
-                hit ? hit->name : "-", s->selected_idx);
-    /* A drop takes priority while a part is selected, because several
-       targets sit behind the tray pieces. */
-    if (s->selected_idx > 0) {
-        for (int i = 1; i <= 10; i++) {
-            Comp *m = find_num(s, 'm', i);
-            if (!m)
-                continue;
-            /* Use the design-time drop box; the placed image is much larger. */
-            SDL_Rect r = {s->origin_x + m->home_left, s->origin_y + m->home_top,
-                          m->width, m->height};
-            if (x < r.x - 12 || y < r.y - 12 || x >= r.x + r.w + 12 || y >= r.y + r.h + 12)
-                continue;
-            Comp *piece = find_num(s, 's', s->selected_idx);
-            bool ok = false;
-            if (piece && !piece->placed) {
-                for (int k = 0; k < piece->nmaphs; k++)
-                    if (str_ieq(piece->maphs[k], m->name))
-                        ok = true;
-            }
-            if (!ok) {
-                play_bad(s);
-                s->selected_idx = -1;
-                return true;
-            }
-            m->visible = true;
-            m->state = ST_NORMAL;
-            m->normal = (piece && piece->special > 0) ? piece->special : 1;
-            m->autosize = true;
-            m->left = m->home_left;
-            m->top = m->home_top;
-            m->hover_lock = true;
-            piece->placed = true;
-            piece->selected = false;
-            s->selected_idx = -1;
-            s->found_count++;
-            play_count(s);
-            if (s->found_count >= s->target_count)
-                scene_complete(s, 1800);
-            return true;
-        }
-    }
-    /* Selecting a part. */
+        fprintf(stderr, "skladanka click %d,%d hit=%s\n", x, y,
+                hit ? hit->name : "-");
+
+    /* The original is a one-click assembly: clicking a tray part puts it in
+       its designated place on the picture immediately.  There is no second
+       drop click (verified against ABC24.EXE for AUTO/12007). */
+    Comp *piece = NULL;
     for (int i = 1; i <= 20; i++) {
         Comp *p = find_num(s, 's', i);
         if (!p || !p->visible || p->nmaphs == 0)
             continue;
         SDL_Rect r = clamped_rect(s, p);
-        if (x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h) {
-            if (getenv("ABC_DEBUG"))
-                fprintf(stderr, "  select s%d rect %d,%d %dx%d maps=%s\n", i,
-                        r.x, r.y, r.w, r.h, p->nmaphs ? p->maphs[0] : "-");
-            s->selected_idx = i;
-            for (int j = 1; j <= 20; j++) {
-                Comp *q = find_num(s, 's', j);
-                if (q)
-                    q->selected = (j == i);
-            }
-            click_visual(s, p);
-            return true;
-        }
+        /* Later components are on top; in KWIAT s5 is completely covered
+           by the earlier s3 rectangle, so the last match must win. */
+        if (x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h)
+            piece = p;
     }
-    /* Dropping on a target. */
-    for (int i = 1; i <= 10; i++) {
-        Comp *m = find_num(s, 'm', i);
+    if (!piece)
+        return hit != NULL;
+
+    /* A part may list more than one compatible target (SAMOLOT has two
+       interchangeable parts for slots m2/m4).  Prefer a still-empty slot,
+       otherwise replace the first one, as AUTO's alternative car bodies do. */
+    Comp *first = NULL, *target = NULL;
+    for (int k = 0; k < piece->nmaphs && !target; k++) {
+        Comp *m = scene_find(s, piece->maphs[k]);
         if (!m)
             continue;
-        SDL_Rect r = {s->origin_x + m->home_left, s->origin_y + m->home_top,
-                      m->width, m->height};
-        /* targets are tiny: give them a forgiving radius */
-        if (x < r.x - 12 || y < r.y - 12 || x >= r.x + r.w + 12 || y >= r.y + r.h + 12)
-            continue;
-        if (s->selected_idx <= 0) {
-            return true;
+        if (!first)
+            first = m;
+        if (!m->placed)
+            target = m;
+    }
+    if (!target)
+        target = first;
+    if (!target)
+        return true;
+
+    int pnum = comp_num(piece, 's');
+
+    /* Clicking the same part again takes it back out.  Clicking another
+       alternative for the same slot replaces the current design instead. */
+    if (target->placed && target->placed_by == pnum) {
+        target->visible = false;
+        target->placed = false;
+        target->placed_by = 0;
+        if (s->found_count > 0)
+            s->found_count--;
+        if (s->complete && s->found_count < s->target_count) {
+            s->complete = false;
+            s->complete_at = 0;
         }
-        Comp *piece = find_num(s, 's', s->selected_idx);
-        bool ok = false;
-        if (piece && !piece->placed) {
-            for (int k = 0; k < piece->nmaphs; k++) {
-                if (str_ieq(piece->maphs[k], m->name))
-                    ok = true;
-            }
-        }
-        if (!ok) {
-            play_bad(s);
-            s->selected_idx = -1;
-            return true;
-        }
-        m->visible = true;
-        m->state = ST_NORMAL;
-        /* The piece's special frame selects which half of the target shows. */
-        m->normal = (piece && piece->special > 0) ? piece->special : 1;
-        m->autosize = true;
-        m->left = m->home_left;
-        m->top = m->home_top;
-        m->hover_lock = true;
-        piece->placed = true;
-        piece->selected = false;
-        s->selected_idx = -1;
-        s->found_count++;
-        play_count(s);
-        if (s->found_count >= s->target_count)
-            scene_complete(s, 1800);
+        if (getenv("ABC_DEBUG"))
+            fprintf(stderr, "  remove s%d <- %s found=%d/%d\n", pnum,
+                    target->name, s->found_count, s->target_count);
         return true;
     }
-    s->selected_idx = -1;
-    return false;
+
+    /* TMapowanie coordinates are relative to the TTloMapowanie picture. */
+    Comp *map = scene_find(s, "map");
+    int ox = map ? (int)lroundf(map->left) : 0;
+    int oy = map ? (int)lroundf(map->top) : 0;
+
+    bool newly_filled = !target->placed;
+    target->visible = true;
+    target->state = ST_NORMAL;
+    /* The piece's special frame selects the design of the target part. */
+    target->normal = (piece->special > 0) ? piece->special : 1;
+    target->autosize = true;
+    target->left = target->home_left + ox;
+    target->top = target->home_top + oy;
+    target->hover_lock = true;
+    target->placed = true;
+    target->placed_by = pnum;
+    if (newly_filled)
+        s->found_count++;
+    if (getenv("ABC_DEBUG"))
+        fprintf(stderr, "  place s%d -> %s frame %d at %d,%d newly=%d found=%d/%d\n",
+                pnum, target->name, target->normal,
+                (int)target->left, (int)target->top, (int)newly_filled,
+                s->found_count, s->target_count);
+    play_count(s);
+    if (s->found_count >= s->target_count)
+        scene_complete(s, 1800);
+    return true;
 }
 
 /* ---------------- spot the difference ---------------- */

@@ -194,6 +194,30 @@ static SDL_Texture *texture_from_surface(SDL_Renderer *r, SDL_Surface *surf, int
     return tex;
 }
 
+/* Some 1-bpp masks store black in palette slot 0 and white in slot 1;
+   others use the usual white=0 / black=1 order.  The opaque part is the
+   black silhouette, so the bit meaning has to come from the palette. */
+static bool mask_has_black_index0(DfmValue *v)
+{
+    if (!v || v->type != DFM_BIN)
+        return false;
+    int len = 0;
+    const unsigned char *p = bmp_trim(v->bin, v->bin_len, &len);
+    if (!p || len < 62)
+        return false;
+    int off = le32(p + 10);
+    int ncol = le32(p + 46);
+    if (ncol == 0)
+        ncol = 2;
+    if (ncol < 2 || off < 54 + ncol * 4 || 54 + ncol * 4 > len)
+        return false;
+    const unsigned char *p0 = p + 54;
+    const unsigned char *p1 = p + 58;
+    bool b0 = p0[0] == 0 && p0[1] == 0 && p0[2] == 0;
+    bool w1 = p1[0] == 255 && p1[1] == 255 && p1[2] == 255;
+    return b0 && w1;
+}
+
 /* Decode a 1-bpp BMP blob to a byte-per-pixel mask.
    flip=true gives screen/top-down rows; flip=false keeps BMP (bottom-up)
    row order, which is what TLabirynt's entrance coordinates use. */
@@ -511,6 +535,12 @@ static void load_comp(Scene *s, Comp *c)
         bool shape = false;
         c->mask = mask_from_blob(maskv, &c->mask_w, &c->mask_h, true, &shape);
         c->mask_shape = shape;
+        /* TMapowanie masks normally use palette 0=white / 1=black, but a
+           few (e.g. AUTO's m4 mirrors) store the palette the other way. */
+        if (c->cls == CC_MAPOWANIE && c->mask && mask_has_black_index0(maskv)) {
+            for (int i = 0; i < c->mask_w * c->mask_h; i++)
+                c->mask[i] ^= 1;
+        }
     }
     if (c->cls == CC_MAPOWANIE || c->cls == CC_PRZESUN ||
         c->cls == CC_WYSUN || c->mask_shape)

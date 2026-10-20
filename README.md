@@ -26,7 +26,7 @@ The reverse-engineering specification this port is based on lives in
 | Word screen (Telewizorek) | complete — titles, sprites, word arrows, letter buttons, train icon, MIDI |
 | Colouring book (Kolorowanka) | complete — 14-colour palette, flood fill, reset, PNG export |
 | Puzzle (Puzzle) | complete — drag or click-to-place, index pairing, completion |
-| Assemble (Skladanka) | complete — `_MapHS` validated drops, placed-part images, completion |
+| Assemble (Skladanka) | complete — one-click part placement into `_MapHS` slots, map-relative images, alternative designs, completion |
 | Spot the difference (Szczegoly) | complete — paired differences, highlights, completion |
 | Maze (Labirynt) | complete — 1-bpp collision map, cursor-following player, good/bad exits |
 | Zgadywanka 1–4 | complete — all 35 scenes, counters and feedback |
@@ -158,7 +158,9 @@ quirks cannot flip the meaning of the mask:
 * the maze's collision map is indexed in BMP/bottom-up row order, which is the
   order its `wejscieX/Y` entrance coordinates expect;
 * sprite masks are used for mouse hit testing when they form a silhouette;
-* Skladanka placed parts use their mask as an alpha silhouette.
+* Skladanka placed parts use their mask as an alpha silhouette; the mask
+  palette is inspected because most use white=0/black=1 but some (AUTO `m4`)
+  store the black silhouette in palette slot 0.
 
 ---
 
@@ -237,8 +239,12 @@ and documents the inference:
 * **Zgadywanka 3** — `o_i` silhouettes and `z_i` objects pair by index.
 * **Zgadywanka 4** — visible `o_i` are the targets; `_Licznik = 100` is kept
   as the original “no target” sentinel.
-* **Skladanka** — a part's `_BMPNumerSpecial` selects which frame of the target
-  part is shown after a valid `_MapHS` drop.
+* **Skladanka** — clicking a tray part places it immediately in its `_MapHS`
+  slot (the original has no second drop click); `TMapowanie` coordinates are
+  relative to the `map` picture, and a part's `_BMPNumerSpecial` selects which
+  target frame is shown. Alternative parts replace the same slot; clicking the
+  same part again takes it out. Completion counts distinct filled slots, not
+  pieces.
 * **Puzzle** — pieces `kNN` and slots `pNN` pair by index; the tray state keeps
   the original magenta key rectangle, as the original does, and the board uses
   the per-cell VCL colours plus black grid lines.
