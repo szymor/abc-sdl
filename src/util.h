@@ -25,6 +25,12 @@ char *str_lower(char *s);
    case-insensitively. Returns a malloc'ed POSIX path. */
 char *resolve_asset(const char *root, const char *win_path);
 
+/* Same, but search `addon` after `root` if the file is absent from root. */
+char *resolve_asset_fallback(const char *root, const char *addon, const char *win_path);
+
+/* Return true if path names an existing file (or other filesystem object). */
+bool path_exists(const char *path);
+
 /* Join root + "/" + rel. */
 char *path_join(const char *root, const char *rel);
 

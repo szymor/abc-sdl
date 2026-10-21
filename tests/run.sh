@@ -225,6 +225,22 @@ SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute --script "$TMP/iglo.txt" \
 grep -q "scene=3046" "$TMP/iglo.log"
 echo "   IGLO is reachable through the default I arrow cycle"
 
+echo "== addon fallback"
+cat > "$TMP/addon.txt" <<'EOF'
+scene 3046
+wait 100
+click 427 400
+wait 200
+dump
+EOF
+SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
+    --script "$TMP/addon.txt" > "$TMP/addon.log" 2>&1
+grep -q "scene=3046 .*video=1" "$TMP/addon.log"
+SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --addon "$ROOT/addon" --mute \
+    --script "$TMP/addon.txt" > "$TMP/addon2.log" 2>&1
+grep -q "scene=3046 .*video=1" "$TMP/addon2.log"
+echo "   missing IGLO photo is supplied by the default/configured addon"
+
 echo "== word screen hover overlays"
 cat > "$TMP/wordhover.txt" <<EOF
 scene 3016

@@ -110,6 +110,7 @@ typedef struct Comp {
 typedef struct Scene {
     int id, module;
     char data_root[1024];
+    char addon_root[1024];
     DfmComponent **roots;
     int nroots;
     Comp *comps;
@@ -179,7 +180,8 @@ typedef struct Scene {
     SDL_Renderer *renderer;
 } Scene;
 
-Scene *scene_load(SDL_Renderer *r, const char *data_root, int id);
+Scene *scene_load(SDL_Renderer *r, const char *data_root, const char *addon_root, int id);
+char *scene_resolve_asset(Scene *s, const char *win_path);
 void scene_free(Scene *s);
 void scene_update(Scene *s, float dt);
 void scene_render(Scene *s);

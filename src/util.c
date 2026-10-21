@@ -206,6 +206,28 @@ char *resolve_asset(const char *root, const char *win_path)
     return result;
 }
 
+bool path_exists(const char *path)
+{
+    struct stat st;
+    return path && *path && stat(path, &st) == 0;
+}
+
+char *resolve_asset_fallback(const char *root, const char *addon, const char *win_path)
+{
+    char *primary = resolve_asset(root, win_path);
+    if (path_exists(primary))
+        return primary;
+    if (addon && *addon) {
+        char *fallback = resolve_asset(addon, win_path);
+        if (path_exists(fallback)) {
+            free(primary);
+            return fallback;
+        }
+        free(fallback);
+    }
+    return primary;
+}
+
 int mkdir_p(const char *path)
 {
     char *tmp = xstrdup(path);

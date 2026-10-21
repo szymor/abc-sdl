@@ -18,6 +18,7 @@
 
 typedef struct {
     const char *data_root;
+    const char *addon_root;
     int start_id;
     int scale;
     bool fullscreen;
@@ -104,11 +105,43 @@ static const char *pick_data_root(const char *requested)
     return "abc";
 }
 
+static const char *pick_addon_root(const char *requested)
+{
+    static char buf[2048];
+    if (requested && *requested) {
+        snprintf(buf, sizeof(buf), "%s", requested);
+        return buf;
+    }
+    const char *env = getenv("ABC_ADDON");
+    if (env && *env) {
+        snprintf(buf, sizeof(buf), "%s", env);
+        return buf;
+    }
+    if (dir_exists("addon"))
+        return "addon";
+    const char *base = SDL_GetBasePath();
+    if (base) {
+        char candidate[1200];
+        snprintf(candidate, sizeof(candidate), "%s../addon", base);
+        if (dir_exists(candidate)) {
+            snprintf(buf, sizeof(buf), "%s", candidate);
+            return buf;
+        }
+        snprintf(candidate, sizeof(candidate), "%saddon", base);
+        if (dir_exists(candidate)) {
+            snprintf(buf, sizeof(buf), "%s", candidate);
+            return buf;
+        }
+    }
+    return "addon";
+}
+
 static void usage(void)
 {
     puts("Moje Pierwsze ABC - SDL3 re-implementation\n"
          "usage: abc-sdl [options]\n"
          "  --data DIR        content root (contains FRM/ WAV/ AVI/ MIDI/)\n"
+         "  --addon DIR       fallback asset root (default: ./addon or ../addon)\n"
          "  --start ID        scene to open (default 100 = splash)\n"
          "  --scale N         integer window scale (default 2)\n"
          "  --fullscreen      start fullscreen\n"
@@ -130,6 +163,8 @@ static bool parse_args(int argc, char **argv, Options *o)
         const char *a = argv[i];
         if (strcmp(a, "--data") == 0 && i + 1 < argc) {
             o->data_root = argv[++i];
+        } else if (strcmp(a, "--addon") == 0 && i + 1 < argc) {
+            o->addon_root = argv[++i];
         } else if (strcmp(a, "--start") == 0 && i + 1 < argc) {
             o->start_id = atoi(argv[++i]);
         } else if (strcmp(a, "--scale") == 0 && i + 1 < argc) {
@@ -250,7 +285,8 @@ static char *screenshot_path(int id, const char *tag)
     return path;
 }
 
-static int script_navigate(SDL_Renderer *r, const char *root, Scene **ps, int *id)
+static int script_navigate(SDL_Renderer *r, const char *root, const char *addon,
+                           Scene **ps, int *id)
 {
     Scene *s = *ps;
     if (!s->request_pending)
@@ -264,7 +300,7 @@ static int script_navigate(SDL_Renderer *r, const char *root, Scene **ps, int *i
     int mx = s->mouse_x, my = s->mouse_y;
     scene_free(s);
     *id = next;
-    s = scene_load(r, root, next);
+    s = scene_load(r, root, addon, next);
     if (!s)
         return -1;
     s->mouse_x = mx;
@@ -274,7 +310,7 @@ static int script_navigate(SDL_Renderer *r, const char *root, Scene **ps, int *i
 }
 
 static int run_script(SDL_Renderer *r, SDL_Texture *canvas, const char *root,
-                      int start, const char *file)
+                      const char *addon, int start, const char *file)
 {
     FILE *f = fopen(file, "r");
     if (!f) {
@@ -282,7 +318,7 @@ static int run_script(SDL_Renderer *r, SDL_Texture *canvas, const char *root,
         return 1;
     }
     int id = start;
-    Scene *s = scene_load(r, root, id);
+    Scene *s = scene_load(r, root, addon, id);
     if (!s) {
         fclose(f);
         return 1;
@@ -326,7 +362,7 @@ static int run_script(SDL_Renderer *r, SDL_Texture *canvas, const char *root,
                 scene_update(s, 0.016f);
                 audio_tick();
                 SDL_Delay(16);
-                int nr = script_navigate(r, root, &s, &id);
+                int nr = script_navigate(r, root, addon, &s, &id);
                 if (nr < 0) {
                     rc = 0;
                     goto done;
@@ -362,7 +398,7 @@ static int run_script(SDL_Renderer *r, SDL_Texture *canvas, const char *root,
                 continue;
             scene_free(s);
             id = x;
-            s = scene_load(r, root, id);
+            s = scene_load(r, root, addon, id);
             if (!s) {
                 rc = 1;
                 goto done;
@@ -384,7 +420,7 @@ static int run_script(SDL_Renderer *r, SDL_Texture *canvas, const char *root,
             log_info("script print %s: %s", out, ok ? "ok" : SDL_GetError());
             s->print_requested = false;
         }
-        int nr = script_navigate(r, root, &s, &id);
+        int nr = script_navigate(r, root, addon, &s, &id);
         if (nr < 0)
             goto done;
     }
@@ -440,10 +476,14 @@ int main(int argc, char **argv)
     if (!opt.mute)
         audio_init();
 
+    opt.addon_root = pick_addon_root(opt.addon_root);
     log_info("data root: %s", opt.data_root);
+    log_info("addon root: %s%s", opt.addon_root,
+             dir_exists(opt.addon_root) ? "" : " (missing)");
 
     if (opt.script) {
-        int rc = run_script(renderer, canvas, opt.data_root, opt.start_id, opt.script);
+        int rc = run_script(renderer, canvas, opt.data_root, opt.addon_root,
+                            opt.start_id, opt.script);
         SDL_DestroyTexture(canvas);
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);
@@ -453,7 +493,7 @@ int main(int argc, char **argv)
     }
 
     if (opt.shot_id >= 0) {
-        Scene *s = scene_load(renderer, opt.data_root, opt.shot_id);
+        Scene *s = scene_load(renderer, opt.data_root, opt.addon_root, opt.shot_id);
         if (!s) {
             SDL_DestroyTexture(canvas);
             SDL_DestroyRenderer(renderer);
@@ -490,7 +530,7 @@ int main(int argc, char **argv)
 
     while (running) {
         if (!scene) {
-            scene = scene_load(renderer, opt.data_root, scene_id);
+            scene = scene_load(renderer, opt.data_root, opt.addon_root, scene_id);
             if (!scene) {
                 log_error("cannot open scene %d", scene_id);
                 break;

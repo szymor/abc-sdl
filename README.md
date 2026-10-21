@@ -85,9 +85,16 @@ python3 tools/extract_cursors.py ../abc-re/abc/ABC.EXE
 3. `./abc`
 4. `../abc-re/abc`
 
+Assets missing from the disc tree are looked up in an addon directory. The
+default is `./addon` in the repository root (also found as `../addon` when
+running from `build/`); `$ABC_ADDON` or `--addon DIR` overrides it. The disc
+tree always wins when it contains the file. The bundled addon currently
+supplies the missing IGLO photo `AVI/46_2.AVI`.
+
 Default start scene is `100` (splash). Useful options:
 
 ```
+--addon DIR       fallback asset root (default: ./addon, then ../addon)
 --start ID        open a specific scene (e.g. 1001 train, 3016 CYMBALKI)
 --scale N         integer window scale (default 2)
 --fullscreen      start fullscreen
@@ -176,8 +183,9 @@ navigation/media fixes listed below:
 Requested fixes that are active by default:
 
 * **IGLO navigation:** the I word arrows are re-linked through IGLO (3046), so
-  it is reachable by default; the word screen and puzzle already exist. The I
-  letter playground itself still has no IGLO/igloo hotspot.
+  it is reachable by default; the word screen and puzzle already exist, and
+  the bundled addon supplies its missing photo. The I letter playground itself
+  still has no IGLO/igloo hotspot.
 * **YETI navigation:** YETI is the only Y word, so its two arrow hotspots are
   inactive instead of inventing a destination (the shipped data points them
   back at 3135). The arrow artwork is baked into `tlo`; it is left visible,
@@ -185,10 +193,11 @@ Requested fixes that are active by default:
   letter scene (2023) are hidden and inactive.
 * **Absent/reused clips:** a film/photo button is enabled only if the clip
   belonging to that word (`<word>_1.AVI` / `<word>_2.AVI`) exists. This
-  disables `4_1`, `46_2`, `135_1` and also stops words 6 and 135 from playing
-  the unrelated `9_2.AVI` (the ladybird) through their photo buttons. Disabled
-  buttons use the flat yellow placeholder baked into `tlo`; no translucent
-  hotspot tint is drawn over it.
+  disables `4_1` and `135_1` and also stops words 6 and 135 from playing the
+  unrelated `9_2.AVI` (the ladybird) through their photo buttons. The missing
+  `46_2.AVI` photo is supplied by the bundled addon. Disabled buttons use the
+  flat yellow placeholder baked into `tlo`; no translucent hotspot tint is
+  drawn over it.
 * **Puzzle board:** the `p01…p14` slots are filled with their VCL `Color` and
   a black grid, matching the original red board instead of showing the word
   picture through the cells.

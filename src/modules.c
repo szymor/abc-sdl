@@ -92,7 +92,7 @@ static MIX_Audio *load_path(Scene *s, const char *win_path)
 {
     if (!win_path || !*win_path)
         return NULL;
-    char *p = resolve_asset(s->data_root, win_path);
+    char *p = scene_resolve_asset(s, win_path);
     MIX_Audio *a = file_exists(p) ? audio_load_file(p) : NULL;
     free(p);
     return a;
@@ -330,7 +330,7 @@ void modules_setup(Scene *s, const char *data_root)
             const char *f = dfm_str(midi->src, key, NULL);
             if (!f || !*f)
                 continue;
-            char *p = resolve_asset(s->data_root, f);
+            char *p = scene_resolve_asset(s, f);
             snprintf(s->music_paths[s->nmusic], sizeof(s->music_paths[0]), "%s", p);
             free(p);
             s->nmusic++;
@@ -443,7 +443,7 @@ void modules_setup(Scene *s, const char *data_root)
             }
             bool exists = false;
             if (f && check) {
-                char *p = resolve_asset(s->data_root, check);
+                char *p = scene_resolve_asset(s, check);
                 exists = file_exists(p);
                 if (getenv("ABC_DEBUG"))
                     fprintf(stderr, "media %s <- %s (%s) disabled=%d\n",
@@ -1186,7 +1186,7 @@ static bool train_click(Scene *s, int x, int y, Comp *hit)
     }
     if (hit && str_ieq(hit->name, "info")) {
         click_visual(s, hit);
-        char *path = resolve_asset(s->data_root, "\\AVI\\AUTORZY.AVI");
+        char *path = scene_resolve_asset(s, "\\AVI\\AUTORZY.AVI");
         if (file_exists(path)) {
             s->video = video_open(s->renderer, path);
             s->video_fullscreen = true;
@@ -1265,7 +1265,7 @@ static bool tv_click(Scene *s, int x, int y, Comp *hit)
     comp_set_state(s, hit, ST_ABNORMAL);
     if (getenv("ABC_DEBUG"))
         fprintf(stderr, "TV button %s active\n", hit->name);
-    char *path = resolve_asset(s->data_root, which);
+    char *path = scene_resolve_asset(s, which);
     bool exists = file_exists(path);
     click_visual(s, hit);
     if (!exists) {

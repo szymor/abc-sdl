@@ -23,11 +23,12 @@ static int le16(const unsigned char *p)
 
 static bool file_exists(const char *path)
 {
-    FILE *f = fopen(path, "rb");
-    if (!f)
-        return false;
-    fclose(f);
-    return true;
+    return path_exists(path);
+}
+
+char *scene_resolve_asset(Scene *s, const char *win_path)
+{
+    return resolve_asset_fallback(s->data_root, s->addon_root, win_path);
 }
 
 static SDL_Cursor *g_cursor_cache[32];
@@ -618,13 +619,13 @@ static void load_comp(Scene *s, Comp *c)
 
     /* Click sounds from WAV/. Resolve lazily but check existence. */
     if (c->click_file[0]) {
-        char *p = resolve_asset(s->data_root, c->click_file);
+        char *p = scene_resolve_asset(s, c->click_file);
         if (file_exists(p))
             c->wav_click = audio_load_file(p);
         free(p);
     }
     if (c->click_file2[0]) {
-        char *p = resolve_asset(s->data_root, c->click_file2);
+        char *p = scene_resolve_asset(s, c->click_file2);
         if (file_exists(p))
             c->wav_click2 = audio_load_file(p);
         free(p);
@@ -749,11 +750,11 @@ static void load_comp(Scene *s, Comp *c)
     }
 }
 
-Scene *scene_load(SDL_Renderer *r, const char *data_root, int id)
+Scene *scene_load(SDL_Renderer *r, const char *data_root, const char *addon_root, int id)
 {
     char rel[64];
     snprintf(rel, sizeof(rel), "frm/%d.FRM", id);
-    char *path = resolve_asset(data_root, rel);
+    char *path = resolve_asset_fallback(data_root, addon_root, rel);
     size_t len = 0;
     unsigned char *data = read_file(path, &len);
     if (!data) {
@@ -777,6 +778,8 @@ Scene *scene_load(SDL_Renderer *r, const char *data_root, int id)
     s->id = id;
     s->module = id / 1000;
     snprintf(s->data_root, sizeof(s->data_root), "%s", data_root);
+    if (addon_root)
+        snprintf(s->addon_root, sizeof(s->addon_root), "%s", addon_root);
     s->roots = roots;
     s->nroots = nroots;
     s->return_id = 3000 + (id % 1000);
