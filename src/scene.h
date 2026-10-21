@@ -203,7 +203,6 @@ void scene_complete(Scene *s, int delay_ms);
 void scene_toast(Scene *s, const char *msg, int ms);
 void scene_set_player(Scene *s, int x, int y);
 void scene_shutdown_cursors(void);
-void scene_set_fix_content(bool enabled);
 uint32_t scene_sample_bmp(DfmComponent *src);
 SDL_Surface *scene_bmp_surface(DfmValue *v);
 

@@ -96,7 +96,6 @@ Default start scene is `100` (splash). Useful options:
 --shot ID         render one scene to a PNG and exit
 --out FILE        output for --shot
 --script FILE     replay a click script (see Testing)
---fix-content     opt-in fixes: re-link the I arrows so IGLO (3046) is reachable
 ```
 
 ### Controls
@@ -169,8 +168,6 @@ quirks cannot flip the meaning of the mask:
 The port follows the original disc's data, with the explicitly requested
 navigation/media fixes listed below:
 
-* word 46 `IGLO` remains unreachable (no letter/arrow link) unless
-  `--fix-content` is given, which re-links the I arrow cycle;
 * word 113 does not exist;
 * YETI is still word 135, after the Z words;
 * unused letter hotspots in the other letters keep their fallback links to
@@ -178,6 +175,9 @@ navigation/media fixes listed below:
 
 Requested fixes that are active by default:
 
+* **IGLO navigation:** the I word arrows are re-linked through IGLO (3046), so
+  it is reachable by default; the word screen and puzzle already exist. The I
+  letter playground itself still has no IGLO/igloo hotspot.
 * **YETI navigation:** YETI is the only Y word, so its two arrow hotspots are
   inactive instead of inventing a destination (the shipped data points them
   back at 3135). The arrow artwork is baked into `tlo`; it is left visible,
@@ -292,7 +292,7 @@ and documents the inference:
 A headless regression suite lives in [`tests/run.sh`](tests/run.sh). It checks
 the parser counts, loads and renders every scene, walks the train→letter→word
 →game→word flow, completes every activity, verifies the YETI fix, absent-clip
-handling and task-cue playback, checks the IGLO fix, and plays video clips:
+handling and task-cue playback, checks IGLO navigation, and plays video clips:
 
 ```bash
 DATA=../abc-re/abc tests/run.sh
@@ -369,5 +369,5 @@ pointer; the extracted `LIT_*` arrays are ready for a future cursor mode.
    player letter should follow the pointer or replace it).
 2. **Polish glyphs in the tiny font** (currently ASCII only) and a proper
    print dialog/export layout.
-3. Extend the optional `--fix-content` pack (IGLO re-link is implemented;
-   YETI renumbering and the remaining fallback links are still original data).
+3. Add an IGLO hotspot/overlay to the I letter playground; remaining content
+   decisions (YETI numbering, fallback links) are still original data.

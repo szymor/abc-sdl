@@ -23,7 +23,6 @@ typedef struct {
     bool fullscreen;
     bool mute;
     bool validate;
-    bool fix_content;
     int shot_id;
     const char *shot_out;
     const char *script;
@@ -118,7 +117,6 @@ static void usage(void)
          "  --shot ID         render scene ID to PNG and exit\n"
          "  --out FILE        output file for --shot\n"
          "  --script FILE     replay a click script (move/click/down/up/wait/shot)\n"
-         "  --fix-content     enable opt-in content fixes\n"
          "  --help            this text\n");
 }
 
@@ -144,8 +142,6 @@ static bool parse_args(int argc, char **argv, Options *o)
             o->mute = true;
         } else if (strcmp(a, "--validate") == 0) {
             o->validate = true;
-        } else if (strcmp(a, "--fix-content") == 0) {
-            o->fix_content = true;
         } else if (strcmp(a, "--shot") == 0 && i + 1 < argc) {
             o->shot_id = atoi(argv[++i]);
         } else if (strcmp(a, "--out") == 0 && i + 1 < argc) {
@@ -444,7 +440,6 @@ int main(int argc, char **argv)
     if (!opt.mute)
         audio_init();
 
-    scene_set_fix_content(opt.fix_content);
     log_info("data root: %s", opt.data_root);
 
     if (opt.script) {

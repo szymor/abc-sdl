@@ -212,21 +212,18 @@ else
     echo "   wrong-answer audio test skipped (no audio device)" >&2
 fi
 
-echo "== opt-in content fix"
-cat > "$TMP/fix.txt" <<'EOF'
+echo "== IGLO navigation"
+cat > "$TMP/iglo.txt" <<'EOF'
 scene 3047
 wait 100
 click 28 33
 wait 100
 dump
 EOF
-SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute --script "$TMP/fix.txt" \
-    > "$TMP/fix0.log" 2>&1
-grep -q "scene=3050" "$TMP/fix0.log"
-SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute --fix-content \
-    --script "$TMP/fix.txt" > "$TMP/fix1.log" 2>&1
-grep -q "scene=3046" "$TMP/fix1.log"
-echo "   IGLO is reachable with --fix-content"
+SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute --script "$TMP/iglo.txt" \
+    > "$TMP/iglo.log" 2>&1
+grep -q "scene=3046" "$TMP/iglo.log"
+echo "   IGLO is reachable through the default I arrow cycle"
 
 echo "== word screen hover overlays"
 cat > "$TMP/wordhover.txt" <<EOF

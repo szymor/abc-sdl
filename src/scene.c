@@ -31,12 +31,7 @@ static bool file_exists(const char *path)
 }
 
 static SDL_Cursor *g_cursor_cache[32];
-static bool g_fix_content = false;
 
-void scene_set_fix_content(bool enabled)
-{
-    g_fix_content = enabled;
-}
 
 static SDL_Cursor *cursor_get(const char *name)
 {
@@ -851,17 +846,15 @@ Scene *scene_load(SDL_Renderer *r, const char *data_root, int id)
         }
     }
 
-    /* Opt-in content fixes. The shipped data leaves IGLO (3046) outside the
-       I arrow cycle because 3047 points left at 3050 and 3050 points right
-       back at 3047. Re-link those two arrows so the cycle includes IGLO. */
-    if (g_fix_content) {
-        if (id == 3047) {
-            Comp *l = scene_find(s, "browWyrL");
-            if (l) { l->modal_set = true; l->modal_result = 3046; }
-        } else if (id == 3050) {
-            Comp *r = scene_find(s, "browWyrP");
-            if (r) { r->modal_set = true; r->modal_result = 3046; }
-        }
+    /* The shipped data leaves IGLO (3046) outside the I arrow cycle because
+       3047 points left at 3050 and 3050 points right back at 3047.  Link the
+       cycle through IGLO by default; its word screen and game are complete. */
+    if (id == 3047) {
+        Comp *l = scene_find(s, "browWyrL");
+        if (l) { l->modal_set = true; l->modal_result = 3046; }
+    } else if (id == 3050) {
+        Comp *r = scene_find(s, "browWyrP");
+        if (r) { r->modal_set = true; r->modal_result = 3046; }
     }
 
     modules_setup(s, data_root);
