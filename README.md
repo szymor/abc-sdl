@@ -243,6 +243,9 @@ Requested fixes that are active by default:
   2–4 px. Anti-aliased edge pixels are excluded from the content rectangle,
   and only border-connected tray-colour pixels are keyed, so a one-pixel
   fringe cannot leave the background colour inside the assembled picture.
+  Selecting a piece switches its tinted tray frame to the original-colour
+  frame; no selection rectangle is drawn. Wrong assignments clear the
+  selection and restore the tray frame.
 * **Colouring palette and fill:** the rounded swatches are baked into `tlo`;
   the selected colour is the separate bow-tie-shaped sprite and is the only
   palette sprite shown (initial selection: green). Swatch colours come from

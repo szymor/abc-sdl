@@ -606,6 +606,34 @@ static bool coloring_click(Scene *s, int x, int y, Comp *hit)
 
 /* ---------------- puzzle ---------------- */
 
+static void clear_puzzle_selection(Scene *s, int keep_idx)
+{
+    for (int i = 1; i <= 14; i++) {
+        Comp *k = find_num(s, 'k', i);
+        if (!k)
+            continue;
+        k->selected = false;
+        if (!k->placed && comp_num(k, 'k') != keep_idx)
+            k->state = ST_NORMAL;
+    }
+    s->selected_idx = keep_idx > 0 ? keep_idx : -1;
+}
+
+static void select_puzzle_piece(Scene *s, int idx)
+{
+    clear_puzzle_selection(s, idx);
+    Comp *k = find_num(s, 'k', idx);
+    if (k && !k->placed) {
+        k->selected = true;
+        /* The tray frame is the green-tinted copy; selecting a piece shows
+           its original colours. */
+        k->state = ST_ABNORMAL;
+        s->selected_idx = idx;
+    } else {
+        s->selected_idx = -1;
+    }
+}
+
 static bool puzzle_place(Scene *s, int piece_idx, Comp *slot)
 {
     Comp *piece = find_num(s, 'k', piece_idx);
@@ -649,14 +677,7 @@ static void revert_piece_to_tray(Scene *s, Comp *piece)
 static bool puzzle_click(Scene *s, int x, int y, Comp *hit)
 {
     if (hit && comp_num(hit, 'k') > 0 && hit->tex && !hit->placed) {
-        s->selected_idx = comp_num(hit, 'k');
-        for (int i = 1; i <= 14; i++) {
-            Comp *k = find_num(s, 'k', i);
-            if (k)
-                k->selected = (comp_num(k, 'k') == s->selected_idx);
-        }
-        /* Selecting a piece must not switch it to the "placed" frame. */
-        hit->state = ST_NORMAL;
+        select_puzzle_piece(s, comp_num(hit, 'k'));
         comp_play_click(s, hit);
         return true;
     }
@@ -668,17 +689,18 @@ static bool puzzle_click(Scene *s, int x, int y, Comp *hit)
         if (in_rect(s, p, x, y)) {
             if (s->selected_idx > 0) {
                 if (puzzle_place(s, s->selected_idx, p)) {
-                    s->selected_idx = -1;
+                    clear_puzzle_selection(s, 0);
                     return true;
                 }
-                revert_piece_to_tray(s, find_num(s, 'k', s->selected_idx));
+                int sel = s->selected_idx;
+                revert_piece_to_tray(s, find_num(s, 'k', sel));
                 play_bad(s);
-                s->selected_idx = -1;
+                clear_puzzle_selection(s, 0);
             }
             return true;
         }
     }
-    s->selected_idx = -1;
+    clear_puzzle_selection(s, 0);
     return false;
 }
 
@@ -1368,7 +1390,7 @@ void modules_mouse_down(Scene *s, int x, int y)
                 SDL_FRect r;
                 comp_rect(s, c, &r);
                 s->drag_idx = i;
-                s->selected_idx = comp_num(c, 'k');
+                select_puzzle_piece(s, comp_num(c, 'k'));
                 s->drag_dx = x - (int)r.x;
                 s->drag_dy = y - (int)r.y;
                 break;
@@ -1411,9 +1433,10 @@ void modules_mouse_up(Scene *s, int x, int y)
     if (!placed && !piece->placed) {
         piece->left = piece->home_left;
         piece->top = piece->home_top;
+        piece->state = ST_NORMAL;
     }
+    clear_puzzle_selection(s, 0);
     s->drag_idx = -1;
-    s->selected_idx = -1;
 }
 
 bool modules_click(Scene *s, int x, int y, Comp *hit)
@@ -1487,15 +1510,6 @@ void modules_render_overlay(Scene *s)
        `tlo`.  Do not tint the hotspot on top: the translucent rectangle
        makes the placeholder lighter and its bounds visible. */
     switch (s->module) {
-    case 11:
-        if (s->selected_idx > 0) {
-            Comp *p = find_num(s, 'k', s->selected_idx);
-            if (p) {
-                SDL_Rect rc = clamped_rect(s, p);
-                outline_rect(r, rc, 255, 240, 80, 2);
-            }
-        }
-        break;
     case 12:
         if (s->selected_idx > 0) {
             Comp *p = find_num(s, 's', s->selected_idx);

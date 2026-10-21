@@ -159,13 +159,39 @@ echo "== wrong puzzle piece returns to tray"
 if ABC_DEBUG=1 SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
         --script "$ROOT/tests/gray.txt" > "$TMP/wrongpiece.log" 2>&1; then
     grep -q "piece k01 wrong -> tray state" "$TMP/wrongpiece.log"
-    grep -q "scene=11002 .*found=0" "$TMP/wrongpiece.log"
+    grep -q "scene=11002 .*found=0 .*sel=-1" "$TMP/wrongpiece.log"
     grep -q "sel=1" "$TMP/wrongpiece.log"
     echo "   misplaced piece is back in its normal tray frame (retryable)"
 else
     echo "   wrong-piece test failed" >&2
     exit 1
 fi
+
+echo "== puzzle selection visual"
+cat > "$TMP/puzzlesel.txt" <<EOF
+scene 11002
+wait 100
+shot $TMP/puzzle-rest.png
+click 246 449
+wait 100
+shot $TMP/puzzle-selected.png
+click 224 53
+wait 150
+shot $TMP/puzzle-wrong.png
+dump
+EOF
+SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
+    --script "$TMP/puzzlesel.txt" > "$TMP/puzzlesel.log" 2>&1
+if cmp -s "$TMP/puzzle-rest.png" "$TMP/puzzle-selected.png"; then
+    echo "selected puzzle piece did not switch to its original colours" >&2
+    exit 1
+fi
+if ! cmp -s "$TMP/puzzle-rest.png" "$TMP/puzzle-wrong.png"; then
+    echo "wrong puzzle click left the selection/styling active" >&2
+    exit 1
+fi
+grep -q "scene=11002 .*found=0 .*sel=-1" "$TMP/puzzlesel.log"
+echo "   selection uses original colours; wrong drop clears it"
 
 echo "== puzzle congratulation only at the end"
 if ABC_DEBUG=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=dummy "$BIN" \
