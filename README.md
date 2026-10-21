@@ -186,6 +186,10 @@ Requested fixes that are active by default:
   it is reachable by default; the word screen and puzzle already exist, and
   the bundled addon supplies its missing photo. The I letter playground itself
   still has no IGLO/igloo hotspot.
+* **Letter-playground object hover:** `_BMPMapMouse` masks are used for hit
+  testing only, not as sprite alpha. Hovering the A playground pineapple now
+  draws its complete replacement patch instead of compositing the new fruit
+  over the baked one.
 * **YETI navigation:** YETI is the only Y word, so its two arrow hotspots are
   inactive instead of inventing a destination (the shipped data points them
   back at 3135). The arrow artwork is baked into `tlo`; it is left visible,

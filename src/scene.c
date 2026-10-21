@@ -389,6 +389,8 @@ static void apply_mask_alpha(Scene *s, Comp *c)
 {
     if (!c->tex || !c->mask)
         return;
+    if (getenv("ABC_DEBUG") && c->mask_mouse && !c->mask_graph)
+        log_info("mask alpha on mouse-only %s", c->name);
     DfmValue *bmp = dfm_prop(c->src, "Picture.Data");
     if (!bmp || bmp->type != DFM_BIN)
         bmp = dfm_prop(c->src, "_BMP.Data");
@@ -698,8 +700,11 @@ static void load_comp(Scene *s, Comp *c)
                 c->mask[i] ^= 1;
         }
     }
+    /* A mouse-only mask defines the clickable silhouette; it must not key
+       the sprite itself.  Letter-playground objects therefore replace their
+       baked artwork with the complete hover patch. */
     if (c->cls == CC_MAPOWANIE || c->cls == CC_PRZESUN ||
-        c->cls == CC_WYSUN || c->mask_shape)
+        c->cls == CC_WYSUN || (c->mask_graph && c->mask_shape))
         apply_mask_alpha(s, c);
 
     /* Embedded WAVs. */

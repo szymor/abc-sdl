@@ -345,6 +345,37 @@ if cmp -s "$TMP/letter-rest.png" "$TMP/letter-train.png"; then
 fi
 echo "   native background; title/letters/object/train hover overlays aligned"
 
+echo "== letter-playground object hover"
+cat > "$TMP/letterobj.txt" <<EOF
+scene 2001
+wait 100
+move 50 50
+wait 200
+shot $TMP/letterobj-rest.png
+move 500 200
+wait 200
+shot $TMP/letterobj-hover.png
+move 50 50
+wait 200
+shot $TMP/letterobj-rest2.png
+EOF
+ABC_DEBUG=1 SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
+    --script "$TMP/letterobj.txt" > "$TMP/letterobj.log" 2>&1
+grep -q "draw Z5 .*state=1" "$TMP/letterobj.log"
+if grep -q "mask alpha on mouse-only Z5" "$TMP/letterobj.log"; then
+    echo "mouse-only mask was applied to the Z5 hover sprite" >&2
+    exit 1
+fi
+if cmp -s "$TMP/letterobj-rest.png" "$TMP/letterobj-hover.png"; then
+    echo "letter-playground object hover did not change the object" >&2
+    exit 1
+fi
+if ! cmp -s "$TMP/letterobj-rest.png" "$TMP/letterobj-rest2.png"; then
+    echo "letter-playground object hover did not clear" >&2
+    exit 1
+fi
+echo "   object hover uses the full replacement patch, not its mouse mask"
+
 echo "== crayon toolbar"
 cat > "$TMP/toolbar.txt" <<EOF
 scene 15001
