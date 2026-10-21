@@ -149,6 +149,7 @@ ABC_DEBUG=1 SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
     --script "$TMP/coloring.txt" > "$TMP/coloring.log" 2>&1
 grep -q "palette 5: ffff0000" "$TMP/coloring.log"
 grep -q "palette 10: ff0000ff" "$TMP/coloring.log"
+grep -q "palette selected 11" "$TMP/coloring.log"
 grep -q "palette 14: ff5a0010" "$TMP/coloring.log"
 grep -q "palette click k5 -> 4 colour ffff0000" "$TMP/coloring.log"
 grep -q "flood fill ffff0000 -> [1-9][0-9]* px" "$TMP/coloring.log"

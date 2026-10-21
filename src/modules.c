@@ -200,7 +200,18 @@ static void coloring_setup(Scene *s)
             fprintf(stderr, "palette %d: %08x\n", i, col);
         s->palette[s->palette_n++] = col;
     }
-    s->sel_color = 0;
+    /* The rounded swatches are baked into `tlo`; each k sprite is the
+       selected/bow-tie shape.  Show only the selected sprite. */
+    s->sel_color = s->palette_n > 10 ? 10 : 0; /* original default: green */
+    if (getenv("ABC_DEBUG"))
+        fprintf(stderr, "palette selected %d\n", s->sel_color + 1);
+    for (int i = 1; i <= 14; i++) {
+        Comp *k = find_num(s, 'k', i);
+        if (!k)
+            continue;
+        k->hover_only = true;
+        k->state = (i - 1 == s->sel_color) ? ST_ABNORMAL : ST_NORMAL;
+    }
     make_paint_canvas(s);
     /* Hide the original background; the paint canvas replaces it. */
     for (int i = 0; i < s->ncomps; i++)
@@ -289,6 +300,11 @@ static void reset_game(Scene *s)
             c->visible = c->visible0;
             c->anim_index = 0;
         }
+    }
+    if (s->module == 10) {
+        Comp *k = find_num(s, 'k', s->sel_color + 1);
+        if (k)
+            k->state = ST_ABNORMAL;
     }
     s->found_count = 0;
     s->complete = false;
@@ -1471,17 +1487,6 @@ void modules_render_overlay(Scene *s)
        `tlo`.  Do not tint the hotspot on top: the translucent rectangle
        makes the placeholder lighter and its bounds visible. */
     switch (s->module) {
-    case 10:
-        if (s->palette_n > 0 && s->sel_color >= 0 && s->sel_color < s->palette_n) {
-            Comp *k = find_num(s, 'k', s->sel_color + 1);
-            if (k) {
-                SDL_FRect rk;
-                comp_rect(s, k, &rk);
-                outline_rect(r, (SDL_Rect){(int)rk.x, (int)rk.y, (int)rk.w, (int)rk.h},
-                             255, 255, 255, 2);
-            }
-        }
-        break;
     case 11:
         if (s->selected_idx > 0) {
             Comp *p = find_num(s, 'k', s->selected_idx);

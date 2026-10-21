@@ -24,7 +24,7 @@ The reverse-engineering specification this port is based on lives in
 | Train hub (Ciuchcia) | complete — 24 calibrated wagon hitboxes, edge scrolling, mouse wheel, exit, credits video |
 | Letter playground (Literka) | complete — hover-reveal objects, all 24 letters, touch-friendly reveal-first click |
 | Word screen (Telewizorek) | complete — titles, sprites, word arrows, letter buttons, train icon, MIDI |
-| Colouring book (Kolorowanka) | complete — 14-colour palette sampled from swatch centres, line-mask flood fill, reset, PNG export |
+| Colouring book (Kolorowanka) | complete — 14-colour palette with normal/selected swatch shapes, centre sampling, line-mask flood fill, reset, PNG export |
 | Puzzle (Puzzle) | complete — drag or click-to-place, index pairing, completion |
 | Assemble (Skladanka) | complete — one-click part placement into `_MapHS` slots, map-relative images, alternative designs, completion |
 | Spot the difference (Szczegoly) | complete — paired differences, highlights, completion |
@@ -243,11 +243,12 @@ Requested fixes that are active by default:
   2–4 px. Anti-aliased edge pixels are excluded from the content rectangle,
   and only border-connected tray-colour pixels are keyed, so a one-pixel
   fringe cannot leave the background colour inside the assembled picture.
-* **Colouring palette and fill:** swatch colours come from the centre of the
-  palette chip (not its bright highlight or tray background), and the flood
-  fill uses the original black line art as its barrier. Anti-aliased grey edge
-  pixels are recoloured as well, so fills meet the ink instead of leaving a
-  light rim.
+* **Colouring palette and fill:** the rounded swatches are baked into `tlo`;
+  the selected colour is the separate bow-tie-shaped sprite and is the only
+  palette sprite shown (initial selection: green). Swatch colours come from
+  the centre of the palette chip, and the flood fill uses the original black
+  line art as its barrier. Anti-aliased grey edge pixels are recoloured as
+  well, so fills meet the ink instead of leaving a light rim.
 * **One voice at a time:** spoken cues are exclusive — starting a new speech
   cue stops the previous speech cue. Choosing an item therefore cuts the
   rules explanation. Non-speech effects are allowed to mix over speech: the
