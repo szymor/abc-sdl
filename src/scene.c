@@ -1507,7 +1507,12 @@ void scene_render(Scene *s)
         SDL_FRect dst = {0, 0, ABC_W, ABC_H};
         SDL_RenderTexture(r, s->paint_tex, NULL, &dst);
     }
+    int drag_idx = -1;
+    if (s->module == 11 && s->drag_idx >= 0 && s->drag_idx < s->ncomps)
+        drag_idx = s->drag_idx;
     for (int i = 0; i < s->ncomps; i++) {
+        if (i == drag_idx)
+            continue; /* drawn above the assembled picture */
         Comp *c = &s->comps[i];
         if (s->module == 10 && c->cls == CC_IMAGE)
             continue; /* replaced by the paint canvas */
@@ -1524,6 +1529,8 @@ void scene_render(Scene *s)
         }
         render_comp(s, c);
     }
+    if (drag_idx >= 0)
+        render_comp(s, &s->comps[drag_idx]);
 
     if (s->module == 14 && s->player_init) {
         /* The original installs a letter cursor (LIT_C…) for the maze word.

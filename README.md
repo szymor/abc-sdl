@@ -245,8 +245,9 @@ Requested fixes that are active by default:
   fringe cannot leave the background colour inside the assembled picture.
   Selecting a piece switches its tinted tray frame to the original-colour
   frame; no selection rectangle is drawn. Wrong assignments clear the
-  selection and restore the tray frame. While dragged, the measured picture
-  content rectangle stays opaque; only pixels outside it are made transparent,
+  selection and restore the tray frame. While dragged, the piece is rendered
+  above the assembled picture. Its measured content rectangle stays opaque;
+  only pixels outside it are made transparent,
   so picture areas matching the tray colour never become holes. The same
   measurement excludes one-pixel tray-colour border columns that would
   otherwise show as vertical bars in the assembled picture.
