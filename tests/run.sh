@@ -50,6 +50,32 @@ grep -q "scene=15001 .*complete=1" "$TMP/flows.log"
 grep -q "scene=3001 .*complete=0" "$TMP/flows.log"
 echo "   train → letter → word → game → stays → kBack → word"
 
+echo "== train scroll persistence"
+cat > "$TMP/trainscroll.txt" <<'EOF'
+scene 1001
+wait 100
+move 630 300
+wait 900
+move 320 50
+wait 200
+dump
+scene 2001
+wait 100
+scene 1001
+wait 200
+dump
+EOF
+SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
+    --script "$TMP/trainscroll.txt" > "$TMP/trainscroll.log" 2>&1
+FIRST=$(grep "scene=1001" "$TMP/trainscroll.log" | sed -n '1s/.*scroll=\([0-9]*\).*/\1/p')
+SECOND=$(grep "scene=1001" "$TMP/trainscroll.log" | sed -n '2s/.*scroll=\([0-9]*\).*/\1/p')
+if [ -z "$FIRST" ] || [ -z "$SECOND" ] || [ "$FIRST" -le 0 ] || [ "$FIRST" != "$SECOND" ]; then
+    echo "train scroll did not survive leaving and re-entering the hub" >&2
+    grep "scene=1001" "$TMP/trainscroll.log" >&2
+    exit 1
+fi
+echo "   horizontal train position survives scene changes"
+
 echo "== game completions"
 SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
     --script "$ROOT/tests/games.txt" > "$TMP/games.log" 2>&1

@@ -996,6 +996,7 @@ void scene_free(Scene *s)
 {
     if (!s)
         return;
+    modules_save_train_scroll(s);
     /* Do not let one-shots (word pronunciation, help, video sound) leak into
        the next scene.  MIDI music is managed separately. */
     audio_stop_all();

@@ -21,7 +21,7 @@ The reverse-engineering specification this port is based on lives in
 | DFM/FRM parser | complete — all **294 scenes / 6330 component streams** parse with 0 errors |
 | Scene manager | complete — ID-driven navigation, 640×480 logical canvas, letterboxed scaling |
 | Splash (Winietka) | complete — 4 s timer, click to skip |
-| Train hub (Ciuchcia) | complete — 24 calibrated wagon hitboxes, edge scrolling, mouse wheel, exit, credits video |
+| Train hub (Ciuchcia) | complete — 24 calibrated wagon hitboxes, edge scrolling, persistent scroll position, mouse wheel, exit, credits video |
 | Letter playground (Literka) | complete — hover-reveal objects, all 24 letters, touch-friendly reveal-first click |
 | Word screen (Telewizorek) | complete — titles, sprites, word arrows, letter buttons, train icon, MIDI |
 | Colouring book (Kolorowanka) | complete — 14-colour palette with normal/selected swatch shapes, centre sampling, line-mask flood fill, reset, PNG export |
@@ -115,6 +115,9 @@ Default start scene is `100` (splash). Useful options:
 | ESC | close overlay, go back one scene, or quit |
 | F11 | fullscreen |
 | F12 | save a screenshot to `screenshots/` |
+
+The train strip keeps its horizontal position for the whole session: leaving
+the hub for a letter/game and returning restores the same scroll offset.
 
 ### Audio
 

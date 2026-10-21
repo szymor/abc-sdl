@@ -213,6 +213,7 @@ SDL_Surface *scene_bmp_surface(DfmValue *v);
 /* modules.c */
 void modules_setup(Scene *s, const char *data_root);
 void modules_update(Scene *s, float dt);
+void modules_save_train_scroll(Scene *s);
 bool modules_click(Scene *s, int x, int y, Comp *hit);
 void modules_render_overlay(Scene *s);
 const char *scene_word_title(int word);

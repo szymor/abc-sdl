@@ -9,6 +9,9 @@
 #include <string.h>
 #include <strings.h>
 
+static Comp *train_comp(Scene *s);
+static int g_train_scroll;
+
 /* Polish titles transliterated to ASCII for the debug font. */
 static const char *word_titles[136] = {
     [0] = "", [1] = "ADAPTER", [2] = "AGRAFKA", [3] = "AKWARIUM",
@@ -570,6 +573,22 @@ void modules_setup(Scene *s, const char *data_root)
             s->target_count = visible_o;
         if (s->target_count >= 100)
             s->no_completion = true;
+    }
+
+    if (s->module == 1) {
+        Comp *train = train_comp(s);
+        if (train) {
+            int max_scroll = train->tex_w - train->width;
+            if (max_scroll < 0)
+                max_scroll = 0;
+            s->scroll = g_train_scroll;
+            if (s->scroll < 0)
+                s->scroll = 0;
+            if (s->scroll > max_scroll)
+                s->scroll = max_scroll;
+            if (getenv("ABC_DEBUG"))
+                fprintf(stderr, "train scroll restored %d\n", s->scroll);
+        }
     }
 }
 
@@ -1165,14 +1184,19 @@ static void maze_update(Scene *s, float dt)
 
 /* ---------------- train ---------------- */
 
+/* The original keeps one train strip for the whole application session; its
+   scroll position survives leaving the hub and coming back. */
+static Comp *train_comp(Scene *s)
+{
+    for (int i = 0; i < s->ncomps; i++)
+        if (s->comps[i].cls == CC_PRZESUN)
+            return &s->comps[i];
+    return NULL;
+}
+
 static void train_update(Scene *s, float dt)
 {
-    Comp *train = NULL;
-    for (int i = 0; i < s->ncomps; i++)
-        if (s->comps[i].cls == CC_PRZESUN) {
-            train = &s->comps[i];
-            break;
-        }
+    Comp *train = train_comp(s);
     if (!train)
         return;
     int max_scroll = train->tex_w - train->width;
@@ -1187,16 +1211,18 @@ static void train_update(Scene *s, float dt)
         s->scroll += (int)(speed * dt);
     if (s->scroll < 0) s->scroll = 0;
     if (s->scroll > max_scroll) s->scroll = max_scroll;
+    g_train_scroll = s->scroll;
+}
+
+void modules_save_train_scroll(Scene *s)
+{
+    if (s && s->module == 1)
+        g_train_scroll = s->scroll;
 }
 
 static bool train_click(Scene *s, int x, int y, Comp *hit)
 {
-    Comp *train = NULL;
-    for (int i = 0; i < s->ncomps; i++)
-        if (s->comps[i].cls == CC_PRZESUN) {
-            train = &s->comps[i];
-            break;
-        }
+    Comp *train = train_comp(s);
     if (train && y >= s->origin_y + train->top &&
         y < s->origin_y + train->top + train->height) {
         for (int i = 0; i < train->box_count; i++) {
