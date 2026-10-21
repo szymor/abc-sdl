@@ -469,12 +469,43 @@ static void compute_piece_content(Comp *c)
         }
         if (near * 2 < rgba->h) { minx = x; break; }
     }
+    int maxx = minx, maxy = miny;
+    if (minx < fw && miny < rgba->h) {
+        for (int x = fw - 1; x >= minx; x--) {
+            int near = 0;
+            for (int y = 0; y < rgba->h; y++) {
+                uint32_t p = px[y * stride + fi * fw + x];
+                int dr = (int)((p >> 16) & 255) - cr;
+                int dg = (int)((p >> 8) & 255) - cg;
+                int db = (int)(p & 255) - cb;
+                if (!(p & 0xFF000000u) || dr * dr + dg * dg + db * db <= 30 * 30)
+                    near++;
+            }
+            if (near * 2 < rgba->h) { maxx = x; break; }
+        }
+        for (int y = rgba->h - 1; y >= miny; y--) {
+            int near = 0;
+            for (int x = fi * fw; x < (fi + 1) * fw; x++) {
+                uint32_t p = px[y * stride + x];
+                int dr = (int)((p >> 16) & 255) - cr;
+                int dg = (int)((p >> 8) & 255) - cg;
+                int db = (int)(p & 255) - cb;
+                if (!(p & 0xFF000000u) || dr * dr + dg * dg + db * db <= 30 * 30)
+                    near++;
+            }
+            if (near * 2 < fw) { maxy = y; break; }
+        }
+    }
     if (minx == fw && miny == rgba->h) {
         c->content_off_x = 0;
         c->content_off_y = 0;
+        c->content_w = 0;
+        c->content_h = 0;
     } else {
         c->content_off_x = minx;
         c->content_off_y = miny;
+        c->content_w = maxx >= minx ? maxx - minx + 1 : 0;
+        c->content_h = maxy >= miny ? maxy - miny + 1 : 0;
     }
     SDL_DestroySurface(rgba);
 }
@@ -502,7 +533,11 @@ void scene_apply_puzzle_alpha(Scene *s)
         int frames = k->frame_count > 0 ? k->frame_count : 1;
         int fw = rgba->w / frames;
         int x0 = k->content_off_x, y0 = k->content_off_y;
-        int sw = p->width, sh = p->height;
+        /* Use the measured content rectangle, not the slot width: a piece can
+           have a one-column tray-colour border that would otherwise show as
+           a vertical bar. */
+        int sw = k->content_w > 0 ? k->content_w : p->width;
+        int sh = k->content_h > 0 ? k->content_h : p->height;
         if (x0 < 0 || y0 < 0 || sw <= 0 || sh <= 0 ||
             x0 + sw > fw || y0 + sh > rgba->h) {
             SDL_DestroySurface(rgba);

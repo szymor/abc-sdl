@@ -53,6 +53,7 @@ typedef struct Comp {
     SDL_Texture *tex;
     int tex_w, tex_h, frame_w, frame_h, frame_count;
     int content_off_x, content_off_y;
+    int content_w, content_h;
     int slot_w, slot_h;
     bool key_magenta;
     bool key_corner;
