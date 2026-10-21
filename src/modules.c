@@ -120,6 +120,18 @@ static void play_count(Scene *s)
         audio_play(s->wav_count, 1.0f);
 }
 
+/* Non-final Zgadywanka success: the short waveOK cue.  The longer
+   _WaveLicznik recording is the completion message and must not play after
+   every item. */
+static void play_zg_success(Scene *s)
+{
+    if (!s->wav_ok)
+        return;
+    if (getenv("ABC_DEBUG"))
+        log_info("zg success cue");
+    audio_play(s->wav_ok, 1.0f);
+}
+
 /* The task rules are the same cue HELP plays; kReset replays it after a
    reset instead of repeating kReset's own hover phrase. */
 static void play_rules_cue(Scene *s)
@@ -908,6 +920,7 @@ static bool zg2_click(Scene *s, int x, int y, Comp *hit)
     int oi = comp_num(hit, 'o');
     int ni = comp_num(hit, 'n');
     if (oi > 0 && !hit->found) {
+        comp_play_click(s, hit); /* spoken object name */
         hit->found = true;
         char zname[16];
         snprintf(zname, sizeof(zname), "z%d", oi);
@@ -917,7 +930,6 @@ static bool zg2_click(Scene *s, int x, int y, Comp *hit)
             z->hover_lock = true;
         }
         s->found_count++;
-        play_count(s);
         if (s->target_count > 0 && s->found_count >= s->target_count) {
             Comp *anim = scene_find(s, "Anim");
             if (anim)
@@ -927,6 +939,7 @@ static bool zg2_click(Scene *s, int x, int y, Comp *hit)
         return true;
     }
     if (ni > 0) {
+        comp_play_click(s, hit); /* spoken distractor */
         play_bad(s);
         return true;
     }
@@ -983,11 +996,12 @@ static bool zg3_click(Scene *s, int x, int y, Comp *hit)
             z->found = true;
         }
         s->found_count++;
-        play_count(s);
         s->selected_idx = -1;
         s->selected_group = 0;
         if (s->found_count >= s->target_count)
             scene_complete(s, 1800);
+        else
+            play_zg_success(s);
         return true;
     }
     Comp *o = find_num(s, 'o', sel);
@@ -1013,10 +1027,11 @@ static bool zg4_click(Scene *s, int x, int y, Comp *hit)
             hit->state = ST_ABNORMAL;
             hit->hover_lock = true;
             s->found_count++;
-            play_count(s);
             if (!s->no_completion && s->target_count > 0 &&
                 s->found_count >= s->target_count)
                 scene_complete(s, 1800);
+            else
+                play_zg_success(s);
             return true;
         }
     }

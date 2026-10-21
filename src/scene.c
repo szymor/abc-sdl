@@ -1276,12 +1276,16 @@ void scene_complete(Scene *s, int delay_ms)
     s->complete_delay_ms = delay_ms;
     /* Puzzle's _WaveLicznik is the long spoken congratulation; it belongs
        at the end, not on each placed piece. */
-    if (s->module == 11 && s->wav_count)
+    bool zg = s->module >= 15 && s->module <= 18;
+    if ((s->module == 11 || zg) && s->wav_count) {
+        if (getenv("ABC_DEBUG"))
+            log_info("zg/activity completion cue");
         audio_play(s->wav_count, 1.0f);
-    else if (s->wav_ok)
+    } else if (s->wav_ok) {
         audio_play(s->wav_ok, 1.0f);
-    else if (s->wav_count)
+    } else if (s->wav_count) {
         audio_play(s->wav_count, 1.0f);
+    }
 }
 
 void scene_toast(Scene *s, const char *msg, int ms)

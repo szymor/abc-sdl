@@ -391,6 +391,33 @@ if [ "$TITLE_VOICES" != "first second " ] || [ "$OBJECT_VOICES" != "first second
 fi
 echo "   title and object clicks alternate K/M recordings"
 
+echo "== Zgadywanka success/final cue timing"
+cat > "$TMP/zgcues.txt" <<'EOF'
+scene 17012
+wait 100
+click 391 154
+click 167 118
+click 353 404
+click 161 234
+click 565 68
+click 155 365
+wait 100
+scene 18026
+wait 100
+click 310 313
+click 519 101
+wait 100
+EOF
+ABC_DEBUG=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=dummy "$BIN" \
+    --data "$DATA" --script "$TMP/zgcues.txt" > "$TMP/zgcues.log" 2>&1
+if [ "$(grep -c "zg success cue" "$TMP/zgcues.log")" -ne 3 ] ||
+   [ "$(grep -c "zg/activity completion cue" "$TMP/zgcues.log")" -ne 2 ]; then
+    echo "Zgadywanka success/final cues are mistimed" >&2
+    grep -E "zg success cue|completion cue|scene=" "$TMP/zgcues.log" >&2
+    exit 1
+fi
+echo "   per-item success cues and one completion cue per completed task"
+
 echo "== word-arrow audio across navigation"
 cat > "$TMP/arrowaudio.txt" <<'EOF'
 scene 3004

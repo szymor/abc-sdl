@@ -294,6 +294,10 @@ Requested fixes that are active by default:
   the distractors) instead of the empty `waveK` player. The wrong-answer buzz
   is mixed over the distractor's explanation, so the child hears both “what
   this is” and the wrong feedback.
+* **Zgadywanka cue timing:** Zgadywanka 2 plays the selected object’s spoken
+  cue on each correct pick; Zgadywanka 3/4 play the short `waveOK` cue on each
+  non-final match. The longer `_WaveLicznik` recording is the completion
+  message and now plays only when the whole task is finished.
 
 Where the original data is ambiguous, the port uses the observable behaviour
 and documents the inference:
