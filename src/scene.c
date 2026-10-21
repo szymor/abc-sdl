@@ -1277,7 +1277,7 @@ void scene_complete(Scene *s, int delay_ms)
     /* Puzzle's _WaveLicznik is the long spoken congratulation; it belongs
        at the end, not on each placed piece. */
     bool zg = s->module >= 15 && s->module <= 18;
-    if ((s->module == 11 || zg) && s->wav_count) {
+    if ((s->module == 11 || s->module == 13 || zg) && s->wav_count) {
         if (getenv("ABC_DEBUG"))
             log_info("zg/activity completion cue");
         audio_play(s->wav_count, 1.0f);

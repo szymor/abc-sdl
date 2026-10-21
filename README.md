@@ -294,6 +294,10 @@ Requested fixes that are active by default:
   the distractors) instead of the empty `waveK` player. The wrong-answer buzz
   is mixed over the distractor's explanation, so the child hears both “what
   this is” and the wrong feedback.
+* **Szczegoly highlights and cues:** found differences are marked with red
+  ellipse outlines (the `x/y` hotspots are ellipse bounds, not rectangles).
+  Each difference plays the short `wave` success cue; the `_WaveLicznik`
+  summary is played only after the last difference.
 * **Zgadywanka cue timing:** Zgadywanka 2 plays the selected object’s spoken
   cue on each correct pick; Zgadywanka 3/4 play the short `waveOK` cue on each
   non-final match. The longer `_WaveLicznik` recording is the completion

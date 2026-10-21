@@ -132,6 +132,17 @@ static void play_zg_success(Scene *s)
     audio_play(s->wav_ok, 1.0f);
 }
 
+static void play_szczegoly_success(Scene *s)
+{
+    /* Szczegoly stores its short per-difference success cue in the generic
+       `wave` player; `_WaveLicznik` is the final spoken summary. */
+    if (!s->wav_default)
+        return;
+    if (getenv("ABC_DEBUG"))
+        log_info("szczegoly success cue");
+    audio_play(s->wav_default, 1.0f);
+}
+
 /* The task rules are the same cue HELP plays; kReset replays it after a
    reset instead of repeating kReset's own hover phrase. */
 static void play_rules_cue(Scene *s)
@@ -860,9 +871,10 @@ static bool szczegoly_click(Scene *s, int x, int y, Comp *hit)
             if (a) { a->found = true; a->hover_lock = true; }
             if (b) { b->found = true; b->hover_lock = true; }
             s->found_count++;
-            play_count(s);
             if (s->found_count >= s->target_count)
                 scene_complete(s, 1800);
+            else
+                play_szczegoly_success(s);
             return true;
         }
     }
@@ -1545,6 +1557,33 @@ static void outline_rect(SDL_Renderer *r, SDL_Rect rc, Uint8 cr, Uint8 cg, Uint8
     }
 }
 
+/* Szczegoly's difference markers are ellipses inscribed in the x/y hotspot
+   rectangles, not rectangles.  Draw thick 1-px concentric outlines. */
+static void outline_ellipse(SDL_Renderer *r, SDL_Rect rc, Uint8 cr, Uint8 cg, Uint8 cb, int thick)
+{
+    SDL_SetRenderDrawColor(r, cr, cg, cb, 255);
+    for (int ring = 0; ring < thick; ring++) {
+        SDL_Rect q = {rc.x + ring, rc.y + ring,
+                      rc.w - 2 * ring, rc.h - 2 * ring};
+        if (q.w <= 1 || q.h <= 1)
+            break;
+        float cx = q.x + (q.w - 1) * 0.5f;
+        float cy = q.y + (q.h - 1) * 0.5f;
+        float rx = (q.w - 1) * 0.5f;
+        float ry = (q.h - 1) * 0.5f;
+        int steps = (q.w + q.h) * 2;
+        if (steps < 64)
+            steps = 64;
+        SDL_FPoint prev = {cx + rx, cy};
+        for (int i = 1; i <= steps; i++) {
+            float a = (float)i * 6.28318530718f / (float)steps;
+            SDL_FPoint p = {cx + rx * cosf(a), cy + ry * sinf(a)};
+            SDL_RenderLine(r, prev.x, prev.y, p.x, p.y);
+            prev = p;
+        }
+    }
+}
+
 void modules_render_overlay(Scene *s)
 {
     SDL_Renderer *r = s->renderer;
@@ -1572,14 +1611,13 @@ void modules_render_overlay(Scene *s)
                 if (!c)
                     continue;
                 SDL_Rect rc = clamped_rect(s, c);
-                rc.x -= 2; rc.y -= 2; rc.w += 4; rc.h += 4;
-                Uint8 cr = 255, cg = 40, cb = 40;
+                Uint8 cr = 255, cg = 0, cb = 0;
                 if (c->has_color) {
                     cr = (c->color >> 16) & 0xFF;
                     cg = (c->color >> 8) & 0xFF;
                     cb = c->color & 0xFF;
                 }
-                outline_rect(r, rc, cr, cg, cb, 3);
+                outline_ellipse(r, rc, cr, cg, cb, 3);
             }
         }
         break;
