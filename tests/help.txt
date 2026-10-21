@@ -2,8 +2,8 @@
 # enabled (SDL_AUDIODRIVER=dummy is fine) to see the "audio=yes" markers.
 scene 10005
 wait 250
-move 560 400
+move 510 450
 wait 800
-click 510 430
+click 510 450
 wait 250
 dump

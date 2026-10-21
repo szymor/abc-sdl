@@ -104,7 +104,7 @@ Default start scene is `100` (splash). Useful options:
 | input | action |
 |-------|--------|
 | mouse / click | interact |
-| hover | reveals objects in the letter playground; slides in the pencil toolbar at the bottom-right of games |
+| hover | reveals objects in the letter playground; raises individual crayons in the game toolbar at the bottom-right |
 | wheel / ← → (train) | scroll the train |
 | ESC | close overlay, go back one scene, or quit |
 | F11 | fullscreen |
@@ -197,6 +197,10 @@ Requested fixes that are active by default:
   black dots); shape masks (e.g. the pineapple in letter A) are applied the
   same way. Animation backdrops remove only border-connected black, so
   interior black artwork is kept.
+* **Crayon toolbar:** `kHelp`, `kReset`, `kPrint` and `kBack` animate
+  independently, not as a batch. Each starts hidden with its triangular tip
+  visible (`_DoKiedyWsowac` pixels), rises when hovered, and slides back down
+  when the pointer leaves.
 * **Task instructions:** entering a game scene plays the same spoken cue as
   its HELP pencil (`WAV/01.WAV`, `02.WAV`, …), and HELP now reliably replays
   it instead of the generic sound.

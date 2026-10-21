@@ -83,6 +83,7 @@ typedef struct Comp {
     bool anim_playing;
 
     int slide_max, slide_speed;
+    float slide;              /* TWysunBMP: current downward offset */
 
     /* Train strip */
     int box_count;
@@ -132,7 +133,6 @@ typedef struct Scene {
     int request_id;
 
     bool has_toolbar;
-    float toolbar_anim;
 
     /* Train strip */
     int scroll;

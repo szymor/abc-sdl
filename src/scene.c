@@ -656,10 +656,18 @@ static void load_comp(Scene *s, Comp *c)
     }
 
     if (c->cls == CC_WYSUN) {
-        c->slide_max = (int)dfm_int(src, "_DoKiedyWsowac", 46);
+        int visible = (int)dfm_int(src, "_DoKiedyWsowac", 46);
+        if (visible < 1)
+            visible = 46;
+        /* Hidden state leaves the sharpened tip visible: slide the crayon
+           down by all but `_DoKiedyWsowac` pixels. */
+        c->slide_max = c->height - visible;
+        if (c->slide_max < 1)
+            c->slide_max = 46;
         c->slide_speed = (int)dfm_int(src, "_Skok", 20);
-        if (c->slide_max < 40)
-            c->slide_max = 140;
+        if (c->slide_speed < 1)
+            c->slide_speed = 20;
+        c->slide = (float)c->slide_max;
     }
 
     if (c->cls == CC_LABIRYNT) {
@@ -779,7 +787,6 @@ Scene *scene_load(SDL_Renderer *r, const char *data_root, int id)
     s->return_id = 3000 + (id % 1000);
     s->complete_delay_ms = 1600;
     s->request_id = -1;
-    s->toolbar_anim = 0.0f;
     s->sel_color = 0;
     s->selected_idx = -1;
     s->drag_idx = -1;
@@ -950,10 +957,8 @@ void comp_rect(Scene *s, Comp *c, SDL_FRect *out)
         w = (float)c->frame_w;
         h = (float)c->frame_h;
     }
-    if (c->cls == CC_WYSUN && s->has_toolbar) {
-        float hide = (1.0f - s->toolbar_anim) * 140.0f;
-        y += hide;
-    }
+    if (c->cls == CC_WYSUN)
+        y += c->slide;
     out->x = x;
     out->y = y;
     out->w = w;
@@ -1280,18 +1285,25 @@ void scene_update(Scene *s, float dt)
     anim_update(s);
 
     if (s->has_toolbar) {
-        bool near = (s->mouse_x > 430 && s->mouse_y > 300);
-        Comp *hit = scene_hit(s, s->mouse_x, s->mouse_y);
-        if (hit && hit->cls == CC_WYSUN)
-            near = true;
-        float target = near ? 1.0f : 0.0f;
-        float speed = 9.0f;
-        if (s->toolbar_anim < target) {
-            s->toolbar_anim += speed * dt;
-            if (s->toolbar_anim > target) s->toolbar_anim = target;
-        } else if (s->toolbar_anim > target) {
-            s->toolbar_anim -= speed * dt;
-            if (s->toolbar_anim < target) s->toolbar_anim = target;
+        /* Each crayon is an independent TWysunBMP: hover its visible tip (or
+           the raised crayon) to slide it up; leaving slides only that crayon
+           down, leaving its triangular tip visible. */
+        for (int i = 0; i < s->ncomps; i++) {
+            Comp *c = &s->comps[i];
+            if (c->cls != CC_WYSUN)
+                continue;
+            bool over = comp_contains(s, c, s->mouse_x, s->mouse_y);
+            float target = over ? 0.0f : (float)c->slide_max;
+            float step = (float)c->slide_speed * 100.0f * dt;
+            if (step < 1.0f)
+                step = 1.0f;
+            if (c->slide > target) {
+                c->slide -= step;
+                if (c->slide < target) c->slide = target;
+            } else if (c->slide < target) {
+                c->slide += step;
+                if (c->slide > target) c->slide = target;
+            }
         }
     }
 

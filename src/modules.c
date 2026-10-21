@@ -276,6 +276,8 @@ static void reset_game(Scene *s)
             c->left = c->home_left;
             c->top = c->home_top;
         }
+        if (c->cls == CC_WYSUN)
+            c->slide = (float)c->slide_max;
         /* Objects whose bitmap was forced visible by gameplay. */
         if (c->cls == CC_MAPOWANIE && c->src) {
             c->normal = (int)dfm_int(c->src, "_BMPNumerNormal", -2);

@@ -291,6 +291,37 @@ if cmp -s "$TMP/letter-rest.png" "$TMP/letter-train.png"; then
 fi
 echo "   native background; title/letters/object/train hover overlays aligned"
 
+echo "== crayon toolbar"
+cat > "$TMP/toolbar.txt" <<EOF
+scene 15001
+wait 100
+shot $TMP/toolbar-hidden.png
+move 510 450
+wait 250
+shot $TMP/toolbar-help.png
+move 585 450
+wait 250
+shot $TMP/toolbar-print.png
+move 550 250
+wait 250
+shot $TMP/toolbar-away.png
+EOF
+SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
+    --script "$TMP/toolbar.txt" > "$TMP/toolbar.log" 2>&1
+if cmp -s "$TMP/toolbar-hidden.png" "$TMP/toolbar-help.png"; then
+    echo "hovering the help crayon did not raise it" >&2
+    exit 1
+fi
+if cmp -s "$TMP/toolbar-hidden.png" "$TMP/toolbar-print.png"; then
+    echo "hovering the print crayon did not raise it" >&2
+    exit 1
+fi
+if ! cmp -s "$TMP/toolbar-hidden.png" "$TMP/toolbar-away.png"; then
+    echo "crayons did not return to their hidden state" >&2
+    exit 1
+fi
+echo "   crayons rise individually on hover and hide with their tips visible"
+
 echo "== TV media button active state"
 cat > "$TMP/tvstate.txt" <<'EOF'
 scene 3001
