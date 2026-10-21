@@ -72,10 +72,15 @@ static void scene_apply_cursor(Scene *s)
         if (dfm_has(v, "PEDZEL"))
             want = "PEDZEL";
     }
-    if (want)
+    if (want) {
         SDL_SetCursor(cursor_get(want));
-    else
-        SDL_SetCursor(NULL); /* back to the system arrow */
+    } else {
+        /* In SDL3 SDL_SetCursor(NULL) only forces a redraw of the current
+           cursor; it does not restore the system arrow. */
+        SDL_SetCursor(SDL_GetDefaultCursor());
+        if (getenv("ABC_DEBUG"))
+            log_info("cursor default restored");
+    }
 }
 
 static const unsigned char *bmp_trim(const unsigned char *d, int n, int *out_len)

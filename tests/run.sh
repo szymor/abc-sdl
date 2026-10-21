@@ -136,6 +136,20 @@ else
     echo "   reset audio test skipped (no audio device)" >&2
 fi
 
+echo "== cursor restore"
+cat > "$TMP/cursor.txt" <<'EOF'
+scene 10005
+wait 100
+scene 3001
+wait 100
+dump
+EOF
+ABC_DEBUG=1 SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
+    --script "$TMP/cursor.txt" > "$TMP/cursor.log" 2>&1
+grep -q "cursor PEDZEL installed" "$TMP/cursor.log"
+grep -q "cursor default restored" "$TMP/cursor.log"
+echo "   coloring brush cursor returns to the default outside Kolorowanka"
+
 echo "== colouring palette and fill"
 cat > "$TMP/coloring.txt" <<'EOF'
 scene 10005

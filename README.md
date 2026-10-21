@@ -377,9 +377,11 @@ unavailable at build time the old placeholder card is used instead.
 The brush (`PEDZEL`) and the twelve maze letters (`LIT_C`, `LIT_D`, …) are
 extracted from `ABC.EXE` into `src/cursors_data.h` by
 `tools/extract_cursors.py` (requires `wrestool` from `icoutils`). The brush is
-installed while a colouring page is open. The maze currently draws the word's
-initial as a sprite at the player position rather than replacing the OS
-pointer; the extracted `LIT_*` arrays are ready for a future cursor mode.
+installed while a colouring page is open, and scenes without a custom cursor
+restore SDL's default arrow (SDL3's `SDL_SetCursor(NULL)` only redraws the
+current cursor). The maze currently draws the word's initial as a sprite at the
+player position rather than replacing the OS pointer; the extracted `LIT_*`
+arrays are ready for a future cursor mode.
 
 **Next milestones**
 
