@@ -231,18 +231,7 @@ static SDL_Texture *texture_from_surface(SDL_Renderer *r, SDL_Surface *surf, int
     return tex;
 }
 
-static SDL_Texture *load_bmp_texture(SDL_Renderer *r, const char *path, int *w, int *h)
-{
-    SDL_Surface *surf = SDL_LoadBMP(path);
-    if (!surf)
-        return NULL;
-    bool magenta = false;
-    SDL_Texture *tex = texture_from_surface(r, surf, w, h, &magenta, false, false);
-    SDL_DestroySurface(surf);
-    return tex;
-}
-
-/* Some 1-bpp masks store black in palette slot 0 and white in palette slot 1;
+/* Some 1-bpp masks store black in palette slot 0 and white in slot 1;
    others use the usual white=0 / black=1 order.  The opaque part is the
    black silhouette, so the bit meaning has to come from the palette. */
 static bool mask_has_black_index0(DfmValue *v)
@@ -969,24 +958,6 @@ Scene *scene_load(SDL_Renderer *r, const char *data_root, const char *addon_root
     }
 
     modules_setup(s, data_root);
-
-    /* Optional clean hover plate for the word-screen object overlay.  The
-       bundled ANANAS plate is a full 640×480 background with the highlighted
-       pineapple already baked in, so the base pineapple is never visible
-       underneath the hover patch. */
-    if (s->module == 3) {
-        char rel[64];
-        snprintf(rel, sizeof(rel), "OVR/%d_hover.bmp", id);
-        char *hp = resolve_asset_fallback(data_root, addon_root, rel);
-        if (path_exists(hp)) {
-            s->hover_bg = load_bmp_texture(r, hp, &s->hover_bg_w, &s->hover_bg_h);
-            if (s->hover_bg && getenv("ABC_DEBUG"))
-                log_info("hover background %d: %s (%dx%d)", id, hp,
-                         s->hover_bg_w, s->hover_bg_h);
-        }
-        free(hp);
-    }
-
     scene_apply_cursor(s);
 
     /* The original introduces an activity with its spoken instruction; the
@@ -1030,8 +1001,6 @@ void scene_free(Scene *s)
     /* Embedded waves are owned by their components; file waves by the cache. */
     if (s->paint_tex)
         SDL_DestroyTexture(s->paint_tex);
-    if (s->hover_bg)
-        SDL_DestroyTexture(s->hover_bg);
     if (s->video)
         video_close(s->video);
     free(s->paint_bg);
@@ -1546,22 +1515,10 @@ void scene_render(Scene *s)
     int drag_idx = -1;
     if (s->module == 11 && s->drag_idx >= 0 && s->drag_idx < s->ncomps)
         drag_idx = s->drag_idx;
-    bool hover_bg = false;
-    if (s->hover_bg) {
-        Comp *rzecz = scene_find(s, "rzecz");
-        hover_bg = rzecz && rzecz->state == ST_ABNORMAL;
-    }
     for (int i = 0; i < s->ncomps; i++) {
         if (i == drag_idx)
             continue; /* drawn above the assembled picture */
         Comp *c = &s->comps[i];
-        if (hover_bg && str_ieq(c->name, "tlo")) {
-            SDL_FRect dst = {0, 0, (float)s->hover_bg_w, (float)s->hover_bg_h};
-            SDL_RenderTexture(r, s->hover_bg, NULL, &dst);
-            continue;
-        }
-        if (hover_bg && str_ieq(c->name, "rzecz"))
-            continue; /* already baked into the clean hover plate */
         if (s->module == 10 && c->cls == CC_IMAGE)
             continue; /* replaced by the paint canvas */
         if (s->module == 11 && c->has_color && c->cls == CC_ZAMIEN &&

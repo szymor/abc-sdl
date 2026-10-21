@@ -89,11 +89,7 @@ Assets missing from the disc tree are looked up in an addon directory. The
 default is `./addon` in the repository root (also found as `../addon` when
 running from `build/`); `$ABC_ADDON` or `--addon DIR` overrides it. The disc
 tree always wins when it contains the file. The bundled addon currently
-supplies the missing IGLO photo `AVI/46_2.AVI` and a clean ANANAS word-screen
-hover plate `OVR/3004_hover.bmp`. A `OVR/<scene>_hover.bmp` file is a full
-640×480 background used in place of `tlo` while that scene's `rzecz` object
-overlay is hovered; baking the highlighted object into the plate avoids the
-original's duplicated pineapple.
+supplies the missing IGLO photo `AVI/46_2.AVI`.
 
 Default start scene is `100` (splash). Useful options:
 
@@ -195,10 +191,6 @@ Requested fixes that are active by default:
   back at 3135). The arrow artwork is baked into `tlo`; it is left visible,
   but the controls cannot be clicked. The six bogus fallback hotspots in the Y
   letter scene (2023) are hidden and inactive.
-* **ANANAS hover:** the original word screen composites its hover pineapple
-  over the baked one. The addon's `OVR/3004_hover.bmp` replaces the whole
-  background while the object is hovered, so the new pineapple is a clean
-  replacement; leaving the object restores the original background.
 * **Absent/reused clips:** a film/photo button is enabled only if the clip
   belonging to that word (`<word>_1.AVI` / `<word>_2.AVI`) exists. This
   disables `4_1` and `135_1` and also stops words 6 and 135 from playing the

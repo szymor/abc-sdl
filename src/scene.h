@@ -118,11 +118,6 @@ typedef struct Scene {
     int ncomps;
     int origin_x, origin_y;
 
-    /* Optional addon-provided clean hover background (OVR/<id>_hover.bmp).
-       It replaces `tlo` while the word-screen object overlay is active. */
-    SDL_Texture *hover_bg;
-    int hover_bg_w, hover_bg_h;
-
     char music_paths[4][600];
     int nmusic;
     char music_sig[640];

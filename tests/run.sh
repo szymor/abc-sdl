@@ -345,34 +345,6 @@ if cmp -s "$TMP/letter-rest.png" "$TMP/letter-train.png"; then
 fi
 echo "   native background; title/letters/object/train hover overlays aligned"
 
-echo "== clean word-screen hover plate"
-cat > "$TMP/hoverplate.txt" <<'EOF'
-scene 3004
-wait 100
-move 50 50
-wait 200
-shot PLATE_REST
-move 100 160
-wait 200
-shot PLATE_HOVER
-move 50 50
-wait 200
-shot PLATE_REST2
-EOF
-sed -i "s|PLATE_REST2|$TMP/plate-rest2.png|;s|PLATE_HOVER|$TMP/plate-hover.png|;s|PLATE_REST|$TMP/plate-rest.png|" "$TMP/hoverplate.txt"
-ABC_DEBUG=1 SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --addon "$ROOT/addon" --mute \
-    --script "$TMP/hoverplate.txt" > "$TMP/hoverplate.log" 2>&1
-grep -q "hover background 3004: .*3004_hover.bmp" "$TMP/hoverplate.log"
-if cmp -s "$TMP/plate-rest.png" "$TMP/plate-hover.png"; then
-    echo "ANANAS object hover did not use the clean plate" >&2
-    exit 1
-fi
-if ! cmp -s "$TMP/plate-rest.png" "$TMP/plate-rest2.png"; then
-    echo "ANANAS hover plate stayed active after leaving the object" >&2
-    exit 1
-fi
-echo "   ANANAS uses the clean addon hover plate and restores the base image"
-
 echo "== crayon toolbar"
 cat > "$TMP/toolbar.txt" <<EOF
 scene 15001
