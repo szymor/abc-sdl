@@ -371,6 +371,26 @@ if cmp -s "$TMP/letter-rest.png" "$TMP/letter-train.png"; then
 fi
 echo "   native background; title/letters/object/train hover overlays aligned"
 
+echo "== word title/object voice alternation"
+cat > "$TMP/altvoice.txt" <<'EOF'
+scene 3004
+wait 100
+click 300 30
+click 300 30
+click 100 160
+click 100 160
+EOF
+ABC_DEBUG=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=dummy "$BIN" \
+    --data "$DATA" --script "$TMP/altvoice.txt" > "$TMP/altvoice.log" 2>&1
+TITLE_VOICES=$(awk '/word voice sylaby/{print $NF}' "$TMP/altvoice.log" | tr '\n' ' ')
+OBJECT_VOICES=$(awk '/word voice rzecz/{print $NF}' "$TMP/altvoice.log" | tr '\n' ' ')
+if [ "$TITLE_VOICES" != "first second " ] || [ "$OBJECT_VOICES" != "first second " ]; then
+    echo "word title/object clicks did not alternate K/M recordings" >&2
+    grep "word voice" "$TMP/altvoice.log" >&2 || true
+    exit 1
+fi
+echo "   title and object clicks alternate K/M recordings"
+
 echo "== letter-playground object hover"
 cat > "$TMP/letterobj.txt" <<EOF
 scene 2001

@@ -189,6 +189,11 @@ Requested fixes that are active by default:
   it is reachable by default; the word screen and puzzle already exist, and
   the bundled addon supplies its missing photo. The I letter playground itself
   still has no IGLO/igloo hotspot.
+* **Word title/object voice alternation:** successive clicks on the title or
+  object image alternate between the K and M recordings (`Nsk`/`Nsm` and
+  `Nck`/`Ncm`). The first click keeps the original state-appropriate take;
+  later clicks switch variants. Two scenes that reference only one take
+  (`3030`, `3070`) use the sibling K/M WAV file.
 * **Letter-playground object hover:** `_BMPMapMouse` masks are used for hit
   testing only, not as sprite alpha. Hovering the A playground pineapple now
   draws its complete replacement patch instead of compositing the new fruit

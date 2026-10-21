@@ -578,6 +578,28 @@ void scene_apply_puzzle_alpha(Scene *s)
     }
 }
 
+/* A few word scenes only reference one of the Nsk/Nsm or Nck/Ncm takes.
+   Derive the sibling path by swapping the final k/m before the extension. */
+static char *alternate_voice_path(const char *path)
+{
+    if (!path || !*path)
+        return NULL;
+    const char *dot = strrchr(path, '.');
+    if (!dot || dot <= path)
+        return NULL;
+    const char *letter = dot - 1;
+    char alt = 0;
+    if (*letter == 'k' || *letter == 'K')
+        alt = (*letter == 'k') ? 'm' : 'M';
+    else if (*letter == 'm' || *letter == 'M')
+        alt = (*letter == 'm') ? 'k' : 'K';
+    if (!alt)
+        return NULL;
+    char *out = xstrdup(path);
+    out[letter - path] = alt;
+    return out;
+}
+
 static void load_comp(Scene *s, Comp *c)
 {
     DfmComponent *src = c->src;
@@ -731,6 +753,23 @@ static void load_comp(Scene *s, Comp *c)
         if (file_exists(p))
             c->wav_click2 = audio_load_file(p);
         free(p);
+    }
+    if (s->module == 3 &&
+        (str_ieq(c->name, "sylaby") || str_ieq(c->name, "rzecz")) &&
+        ((c->wav_click && !c->wav_click2) || (!c->wav_click && c->wav_click2))) {
+        const char *known = c->wav_click ? c->click_file : c->click_file2;
+        char *alt = alternate_voice_path(known);
+        if (alt) {
+            char *p = scene_resolve_asset(s, alt);
+            if (file_exists(p)) {
+                if (!c->wav_click)
+                    c->wav_click = audio_load_file(p);
+                else
+                    c->wav_click2 = audio_load_file(p);
+            }
+            free(p);
+            free(alt);
+        }
     }
 
     if (c->cls == CC_ANIM) {
@@ -1149,7 +1188,26 @@ void comp_set_state(Scene *s, Comp *c, CompState st)
 void comp_play_click(Scene *s, Comp *c)
 {
     MIX_Audio *a = NULL;
-    if (c->state == ST_ABNORMAL) {
+    bool word_voice = s->module == 3 &&
+                      (str_ieq(c->name, "sylaby") || str_ieq(c->name, "rzecz")) &&
+                      c->wav_click && c->wav_click2;
+    if (word_voice) {
+        /* Word-screen titles and object images store both the K and M
+           recording.  Alternate them on successive clicks.  The first click
+           keeps the state-appropriate take, so existing normal/abnormal
+           behaviour is unchanged until the second click. */
+        if (!c->click_alt_started) {
+            a = c->state == ST_ABNORMAL ? c->wav_click2 : c->wav_click;
+            c->click_alt_second = (a == c->wav_click);
+        } else {
+            a = c->click_alt_second ? c->wav_click2 : c->wav_click;
+            c->click_alt_second = !c->click_alt_second;
+        }
+        c->click_alt_started = true;
+        if (getenv("ABC_DEBUG"))
+            fprintf(stderr, "word voice %s -> %s\n", c->name,
+                    a == c->wav_click2 ? "second" : "first");
+    } else if (c->state == ST_ABNORMAL) {
         /* Hover-only components (e.g. the HELP pencil) are already in the
            abnormal state when clicked.  They still use their normal click
            file, not the generic/default player. */

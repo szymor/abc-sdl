@@ -74,6 +74,7 @@ typedef struct Comp {
     char click_file[300], click_file2[300];
     MIX_Audio *wav_normal, *wav_abnormal;
     MIX_Audio *wav_click, *wav_click2;
+    bool click_alt_started, click_alt_second;
 
     bool is_anim;
     int interval, loop_anim;
