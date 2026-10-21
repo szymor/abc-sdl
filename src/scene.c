@@ -1037,8 +1037,15 @@ void scene_free(Scene *s)
         return;
     modules_save_train_scroll(s);
     /* Do not let one-shots (word pronunciation, help, video sound) leak into
-       the next scene.  MIDI music is managed separately. */
-    audio_stop_all();
+       the next scene.  MIDI music is managed separately.  Word-arrow clicks
+       are an explicit exception: their WAV belongs to the target word and
+       must survive the immediate scene change. */
+    if (s->keep_audio_on_leave) {
+        if (getenv("ABC_DEBUG"))
+            log_info("keeping word-arrow audio across scene %d ->", s->id);
+    } else {
+        audio_stop_all();
+    }
     for (int i = 0; i < s->ncomps; i++)
         comp_unload(&s->comps[i]);
     free(s->comps);
@@ -1698,7 +1705,13 @@ bool scene_click(Scene *s, int x, int y)
         hit->state = ST_NORMAL;
     if (hit->state != old)
         play_state_wave(s, hit, hit->state);
-    if (hit->auto_click_exit && hit->modal_set)
+    if (hit->auto_click_exit && hit->modal_set) {
+        /* Word arrows carry the target word's click WAV.  Keep it alive
+           through the scene switch instead of stopping it in scene_free. */
+        if (s->module == 3 &&
+            (str_ieq(hit->name, "browWyrL") || str_ieq(hit->name, "browWyrP")))
+            s->keep_audio_on_leave = true;
         scene_request(s, hit->modal_result);
+    }
     return true;
 }

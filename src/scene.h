@@ -136,6 +136,7 @@ typedef struct Scene {
     int request_id;
 
     bool has_toolbar;
+    bool keep_audio_on_leave; /* word-arrow click: let its WAV cross the scene change */
 
     /* Train strip */
     int scroll;

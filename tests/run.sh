@@ -391,6 +391,22 @@ if [ "$TITLE_VOICES" != "first second " ] || [ "$OBJECT_VOICES" != "first second
 fi
 echo "   title and object clicks alternate K/M recordings"
 
+echo "== word-arrow audio across navigation"
+cat > "$TMP/arrowaudio.txt" <<'EOF'
+scene 3004
+wait 100
+move 620 30
+wait 100
+click 620 30
+wait 200
+dump
+EOF
+ABC_DEBUG=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=dummy "$BIN" \
+    --data "$DATA" --script "$TMP/arrowaudio.txt" > "$TMP/arrowaudio.log" 2>&1
+grep -q "keeping word-arrow audio" "$TMP/arrowaudio.log"
+grep -q "scene=3005" "$TMP/arrowaudio.log"
+echo "   arrow WAV is not stopped by the word-screen transition"
+
 echo "== letter-playground object hover"
 cat > "$TMP/letterobj.txt" <<EOF
 scene 2001

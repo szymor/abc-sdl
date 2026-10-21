@@ -189,6 +189,9 @@ Requested fixes that are active by default:
   it is reachable by default; the word screen and puzzle already exist, and
   the bundled addon supplies its missing photo. The I letter playground itself
   still has no IGLO/igloo hotspot.
+* **Word-arrow audio:** clicking a word-screen arrow plays the target word's
+  click WAV. That WAV is no longer stopped by the immediately following scene
+  change, so the arrow click is actually audible before the next word appears.
 * **Word title/object voice alternation:** successive clicks on the title or
   object image alternate between the K and M recordings (`Nsk`/`Nsm` and
   `Nck`/`Ncm`). The first click keeps the original state-appropriate take;
