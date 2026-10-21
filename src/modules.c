@@ -492,6 +492,7 @@ void modules_setup(Scene *s, const char *data_root)
             }
             s->target_count = n;
         }
+        scene_apply_puzzle_alpha(s);
     }
 
     if (s->module == 12) {

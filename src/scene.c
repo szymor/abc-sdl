@@ -479,6 +479,63 @@ static void compute_piece_content(Comp *c)
     SDL_DestroySurface(rgba);
 }
 
+void scene_apply_puzzle_alpha(Scene *s)
+{
+    if (s->module != 11)
+        return;
+    for (int i = 1; i <= 14; i++) {
+        char kn[8], pn[8];
+        snprintf(kn, sizeof(kn), "k%02d", i);
+        snprintf(pn, sizeof(pn), "p%02d", i);
+        Comp *k = scene_find(s, kn);
+        Comp *p = scene_find(s, pn);
+        if (!k || !p || !k->src || !k->tex)
+            continue;
+        DfmValue *bmp = dfm_prop(k->src, "_BMP.Data");
+        SDL_Surface *surf = bmp_surface(bmp);
+        if (!surf)
+            continue;
+        SDL_Surface *rgba = SDL_ConvertSurface(surf, SDL_PIXELFORMAT_ARGB8888);
+        SDL_DestroySurface(surf);
+        if (!rgba)
+            continue;
+        int frames = k->frame_count > 0 ? k->frame_count : 1;
+        int fw = rgba->w / frames;
+        int x0 = k->content_off_x, y0 = k->content_off_y;
+        int sw = p->width, sh = p->height;
+        if (x0 < 0 || y0 < 0 || sw <= 0 || sh <= 0 ||
+            x0 + sw > fw || y0 + sh > rgba->h) {
+            SDL_DestroySurface(rgba);
+            continue;
+        }
+        uint32_t *px = rgba->pixels;
+        int stride = rgba->pitch / 4;
+        /* The source frame's tray-colour border is transparent, but its
+           picture content must stay fully opaque even where the picture
+           happens to use a similar colour.  Keep exactly the slot-sized
+           content rectangle opaque in both frames. */
+        for (int f = 0; f < frames; f++) {
+            for (int y = 0; y < rgba->h; y++) {
+                for (int x = 0; x < fw; x++) {
+                    int dst = y * stride + f * fw + x;
+                    if (x >= x0 && x < x0 + sw &&
+                        y >= y0 && y < y0 + sh)
+                        px[dst] |= 0xFF000000u;
+                    else
+                        px[dst] = 0;
+                }
+            }
+        }
+        SDL_Texture *tex = SDL_CreateTextureFromSurface(s->renderer, rgba);
+        SDL_DestroySurface(rgba);
+        if (!tex)
+            continue;
+        SDL_SetTextureScaleMode(tex, SDL_SCALEMODE_NEAREST);
+        SDL_DestroyTexture(k->tex);
+        k->tex = tex;
+    }
+}
+
 static void load_comp(Scene *s, Comp *c)
 {
     DfmComponent *src = c->src;

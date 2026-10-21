@@ -182,6 +182,7 @@ typedef struct Scene {
 
 Scene *scene_load(SDL_Renderer *r, const char *data_root, const char *addon_root, int id);
 char *scene_resolve_asset(Scene *s, const char *win_path);
+void scene_apply_puzzle_alpha(Scene *s);
 void scene_free(Scene *s);
 void scene_update(Scene *s, float dt);
 void scene_render(Scene *s);
