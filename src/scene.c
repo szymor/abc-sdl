@@ -231,6 +231,17 @@ static SDL_Texture *texture_from_surface(SDL_Renderer *r, SDL_Surface *surf, int
     return tex;
 }
 
+static SDL_Texture *load_bmp_texture_file(SDL_Renderer *r, const char *path, int *w, int *h)
+{
+    SDL_Surface *surf = SDL_LoadBMP(path);
+    if (!surf)
+        return NULL;
+    bool magenta = false;
+    SDL_Texture *tex = texture_from_surface(r, surf, w, h, &magenta, false, false);
+    SDL_DestroySurface(surf);
+    return tex;
+}
+
 /* Some 1-bpp masks store black in palette slot 0 and white in slot 1;
    others use the usual white=0 / black=1 order.  The opaque part is the
    black silhouette, so the bit meaning has to come from the palette. */
@@ -891,6 +902,41 @@ static void load_comp(Scene *s, Comp *c)
     }
 }
 
+static void add_iglo_hotspot(Scene *s, const char *path)
+{
+    int w = 0, h = 0;
+    SDL_Texture *tex = load_bmp_texture_file(s->renderer, path, &w, &h);
+    if (!tex)
+        return;
+    s->comps = xrealloc(s->comps, (size_t)(s->ncomps + 1) * sizeof(Comp));
+    Comp *c = &s->comps[s->ncomps++];
+    memset(c, 0, sizeof(*c));
+    snprintf(c->name, sizeof(c->name), "IGLO");
+    c->cls = CC_ZAMIEN;
+    c->left = c->home_left = 148;
+    c->top = c->home_top = 48;
+    c->width = w;
+    c->height = h;
+    c->visible = c->visible0 = true;
+    c->enabled = true;
+    c->autosize = true;
+    c->normal = -2;
+    c->abnormal = 1;
+    c->state = ST_NORMAL;
+    c->move_to_normal = true;
+    c->move_to_abnormal = true;
+    c->modal_set = true;
+    c->modal_result = 3046;
+    c->auto_click_exit = true;
+    c->tex = tex;
+    c->tex_w = c->frame_w = w;
+    c->tex_h = c->frame_h = h;
+    c->frame_count = 1;
+    c->src = NULL;
+    if (getenv("ABC_DEBUG"))
+        log_info("IGLO hover hotspot: %s at 148,48 (%dx%d)", path, w, h);
+}
+
 Scene *scene_load(SDL_Renderer *r, const char *data_root, const char *addon_root, int id)
 {
     char rel[64];
@@ -1002,6 +1048,15 @@ Scene *scene_load(SDL_Renderer *r, const char *data_root, const char *addon_root
     }
 
     modules_setup(s, data_root);
+
+    if (id == 2009) {
+        char *p = resolve_asset_fallback(data_root, addon_root,
+                                         "OVR/2009_IGLO_hover.bmp");
+        if (path_exists(p))
+            add_iglo_hotspot(s, p);
+        free(p);
+    }
+
     scene_apply_cursor(s);
 
     /* The original introduces an activity with its spoken instruction; the

@@ -292,6 +292,30 @@ SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute --script "$TMP/iglo.txt" \
 grep -q "scene=3046" "$TMP/iglo.log"
 echo "   IGLO is reachable through the default I arrow cycle"
 
+echo "== IGLO letter-playground hotspot"
+cat > "$TMP/iglo-letter.txt" <<EOF
+scene 2009
+wait 100
+move 50 50
+wait 150
+shot $TMP/iglo-letter-rest.png
+move 220 100
+wait 150
+shot $TMP/iglo-letter-hover.png
+click 220 100
+wait 150
+dump
+EOF
+ABC_DEBUG=1 SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --addon "$ROOT/addon" --mute \
+    --script "$TMP/iglo-letter.txt" > "$TMP/iglo-letter.log" 2>&1
+grep -q "IGLO hover hotspot" "$TMP/iglo-letter.log"
+grep -q "scene=3046" "$TMP/iglo-letter.log"
+if cmp -s "$TMP/iglo-letter-rest.png" "$TMP/iglo-letter-hover.png"; then
+    echo "IGLO hover image did not appear" >&2
+    exit 1
+fi
+echo "   addon IGLO image appears on hover and opens word 3046"
+
 echo "== addon fallback"
 cat > "$TMP/addon.txt" <<'EOF'
 scene 3046
