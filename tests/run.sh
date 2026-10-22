@@ -304,6 +304,8 @@ dump
 EOF
 ABC_DEBUG=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=dummy "$BIN" \
     --data "$DATA" --mute --script "$TMP/mazeclick.txt" > "$TMP/mazeclick.log" 2>&1
+grep -q "maze 367x391 start cell=17,299" "$TMP/mazeclick.log"
+grep -q "collision=1" "$TMP/mazeclick.log"
 grep -q "scene=14016 .*complete=0" "$TMP/mazeclick.log"
 if grep -q "click Wyj" "$TMP/mazeclick.log"; then
     echo "maze exit pictures were treated as click buttons" >&2

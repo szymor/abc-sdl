@@ -1074,7 +1074,9 @@ static bool maze_free(Scene *s, Comp *maze, int x, int y)
     /* Outside the collision map is open space; the player is clamped later. */
     if (lx < 0 || ly < 0 || lx >= maze->col_w || ly >= maze->col_h)
         return true;
-    return maze->collision[ly * maze->col_w + lx] == 0;
+    /* The bitmap stores the walkable floor as white/index 1 and walls as
+       black/index 0. */
+    return maze->collision[ly * maze->col_w + lx] != 0;
 }
 
 static bool maze_cell_free(Comp *maze, int x, int y)
@@ -1083,7 +1085,7 @@ static bool maze_cell_free(Comp *maze, int x, int y)
         return true;
     if (x < 0 || y < 0 || x >= maze->col_w || y >= maze->col_h)
         return false;
-    return maze->collision[y * maze->col_w + x] == 0;
+    return maze->collision[y * maze->col_w + x] != 0;
 }
 
 static bool maze_cell_clear(Comp *maze, int x, int y)
