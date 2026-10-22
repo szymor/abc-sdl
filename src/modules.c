@@ -993,7 +993,7 @@ static bool zg3_click(Scene *s, int x, int y, Comp *hit)
         s->selected_group = group;
         hit->selected = true;
         if (oi > 0)
-            comp_set_state(s, hit, ST_SPECIAL);
+            comp_set_state(s, hit, ST_ABNORMAL); /* red selection outline */
         click_visual(s, hit);
         return true;
     }
@@ -1641,17 +1641,6 @@ void modules_render_overlay(Scene *s)
                     cb = c->color & 0xFF;
                 }
                 outline_ellipse(r, rc, cr, cg, cb, 3);
-            }
-        }
-        break;
-    case 17:
-        if (s->selected_idx > 0) {
-            Comp *o = find_num(s, 'o', s->selected_idx);
-            Comp *z = find_num(s, 'z', s->selected_idx);
-            Comp *c = (o && o->state == ST_SPECIAL) ? o : z;
-            if (c) {
-                SDL_Rect rc = clamped_rect(s, c);
-                outline_rect(r, rc, 255, 255, 255, 2);
             }
         }
         break;

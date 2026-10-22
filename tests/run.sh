@@ -465,6 +465,26 @@ if [ "$(grep -c "zg success cue" "$TMP/zgcues.log")" -ne 3 ] ||
 fi
 echo "   per-item success cues and one completion cue per completed task"
 
+echo "== Zgadywanka 3 selection visual"
+cat > "$TMP/zg3sel.txt" <<'EOF'
+scene 17012
+wait 100
+click 167 118
+render
+wait 100
+dump
+click 391 154
+render
+wait 100
+dump
+EOF
+ABC_DEBUG=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=dummy "$BIN" \
+    --data "$DATA" --script "$TMP/zg3sel.txt" > "$TMP/zg3sel.log" 2>&1
+grep -q "draw o1 .*state=1" "$TMP/zg3sel.log"
+grep -q "draw o1 .*state=2" "$TMP/zg3sel.log"
+grep -q "scene=17012 found=1" "$TMP/zg3sel.log"
+echo "   left target uses its red-outline frame; a correct pair uses the pair frame"
+
 echo "== Szczegoly success/penultimate/final cue timing"
 cat > "$TMP/szczcues.txt" <<'EOF'
 scene 13077
