@@ -442,12 +442,12 @@ echo "== Zgadywanka success/final cue timing"
 cat > "$TMP/zgcues.txt" <<'EOF'
 scene 17012
 wait 100
-click 391 154
 click 167 118
-click 353 404
+click 391 154
 click 161 234
-click 565 68
+click 353 404
 click 155 365
+click 565 68
 wait 100
 scene 18026
 wait 100
@@ -469,6 +469,10 @@ echo "== Zgadywanka 3 selection visual"
 cat > "$TMP/zg3sel.txt" <<'EOF'
 scene 17012
 wait 100
+click 391 154
+render
+wait 100
+dump
 click 167 118
 render
 wait 100
@@ -480,10 +484,12 @@ dump
 EOF
 ABC_DEBUG=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=dummy "$BIN" \
     --data "$DATA" --script "$TMP/zg3sel.txt" > "$TMP/zg3sel.log" 2>&1
+grep -q "zg3 right-first ignored: z1" "$TMP/zg3sel.log"
+grep -q "scene=17012 found=0 target=3 sel=-1" "$TMP/zg3sel.log"
 grep -q "draw o1 .*state=1" "$TMP/zg3sel.log"
 grep -q "draw o1 .*state=2" "$TMP/zg3sel.log"
 grep -q "scene=17012 found=1" "$TMP/zg3sel.log"
-echo "   left target uses its red-outline frame; a correct pair uses the pair frame"
+echo "   right-first is ignored; left red-outline then pair frame works"
 
 echo "== Szczegoly success/penultimate/final cue timing"
 cat > "$TMP/szczcues.txt" <<'EOF'

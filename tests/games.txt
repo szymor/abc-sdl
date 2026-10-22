@@ -104,14 +104,14 @@ wait 200
 dump
 scene 17012
 wait 100
-click 391 154
 click 167 118
+click 391 154
 dump
-click 353 404
 click 161 234
+click 353 404
 dump
-click 565 68
 click 155 365
+click 565 68
 dump
 wait 2200
 dump

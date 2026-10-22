@@ -988,6 +988,13 @@ static bool zg3_click(Scene *s, int x, int y, Comp *hit)
     if (n <= 0)
         return false;
     int group = oi > 0 ? 1 : 2;
+    /* The task order is fixed: choose the left target first, then its
+       right-side match.  A right object cannot start a selection. */
+    if (s->selected_idx < 0 && zi > 0) {
+        if (getenv("ABC_DEBUG"))
+            fprintf(stderr, "zg3 right-first ignored: %s\n", hit->name);
+        return true;
+    }
     if (s->selected_idx < 0) {
         s->selected_idx = n;
         s->selected_group = group;

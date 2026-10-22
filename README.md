@@ -202,9 +202,11 @@ Requested fixes that are active by default:
   `Nck`/`Ncm`). The first click keeps the original state-appropriate take;
   later clicks switch variants. Two scenes that reference only one take
   (`3030`, `3070`) use the sibling K/M WAV file.
-* **Zgadywanka 3 selection:** the left target uses its own red-outline
-  abnormal frame for selection; there is no white selection rectangle. A
-  correct pair switches that target to its paired-object special frame.
+* **Zgadywanka 3 selection:** the left target must be chosen first; a
+  right-side object clicked first is ignored. The left target uses its own
+  red-outline abnormal frame for selection; there is no white selection
+  rectangle. A correct pair switches that target to its paired-object special
+  frame.
 * **Maze interaction:** the collision bitmap is indexed in visible top-down
   coordinates, with white as the walkable floor and black as walls, so the
   letter follows the pointer through the actual corridors. The right-hand goal
