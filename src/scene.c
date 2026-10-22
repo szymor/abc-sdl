@@ -213,16 +213,66 @@ static SDL_Texture *texture_from_surface(SDL_Renderer *r, SDL_Surface *surf, int
         }
         free(stack);
     }
-    int mag = 0;
-    for (int i = 0; i < total; i++) {
-        if ((px[i] & 0x00FFFFFFu) == 0x00FF00FFu)
-            mag++;
+    /* Magenta is a transparency key only when it forms the backdrop touching
+       the bitmap border.  Some artwork (notably PIES' rabbit) uses magenta
+       as an opaque body colour; removing every magenta pixel punched holes
+       through it. */
+    int border_magenta = 0;
+    for (int x = 0; x < rgba->w; x++) {
+        if ((px[x] & 0x00FFFFFFu) == 0x00FF00FFu)
+            border_magenta++;
+        if ((px[(rgba->h - 1) * stride + x] & 0x00FFFFFFu) == 0x00FF00FFu)
+            border_magenta++;
     }
-    if (mag > 0 && mag < total / 2) {
+    for (int y = 0; y < rgba->h; y++) {
+        if ((px[y * stride] & 0x00FFFFFFu) == 0x00FF00FFu)
+            border_magenta++;
+        if ((px[y * stride + rgba->w - 1] & 0x00FFFFFFu) == 0x00FF00FFu)
+            border_magenta++;
+    }
+    if (border_magenta > 0) {
+        int *stack = xmalloc((size_t)total * sizeof(int));
+        int sp = 0;
+        for (int x = 0; x < rgba->w; x++) {
+            int p0 = x, p1 = (rgba->h - 1) * stride + x;
+            if ((px[p0] & 0x00FFFFFFu) == 0x00FF00FFu) {
+                px[p0] = 0;
+                stack[sp++] = p0;
+            }
+            if ((px[p1] & 0x00FFFFFFu) == 0x00FF00FFu) {
+                px[p1] = 0;
+                stack[sp++] = p1;
+            }
+        }
+        for (int y = 0; y < rgba->h; y++) {
+            int p0 = y * stride, p1 = y * stride + rgba->w - 1;
+            if ((px[p0] & 0x00FFFFFFu) == 0x00FF00FFu) {
+                px[p0] = 0;
+                stack[sp++] = p0;
+            }
+            if ((px[p1] & 0x00FFFFFFu) == 0x00FF00FFu) {
+                px[p1] = 0;
+                stack[sp++] = p1;
+            }
+        }
+        while (sp > 0) {
+            int p = stack[--sp];
+            int x = p % stride, y = p / stride;
+            int nb[4] = {x > 0 ? p - 1 : -1, x + 1 < rgba->w ? p + 1 : -1,
+                         y > 0 ? p - stride : -1,
+                         y + 1 < rgba->h ? p + stride : -1};
+            for (int k = 0; k < 4; k++) {
+                int q = nb[k];
+                if (q < 0)
+                    continue;
+                if ((px[q] & 0x00FFFFFFu) == 0x00FF00FFu) {
+                    px[q] = 0;
+                    stack[sp++] = q;
+                }
+            }
+        }
+        free(stack);
         *magenta = true;
-        for (int i = 0; i < total; i++)
-            if ((px[i] & 0x00FFFFFFu) == 0x00FF00FFu)
-                px[i] = 0;
     }
     SDL_Texture *tex = SDL_CreateTextureFromSurface(r, rgba);
     SDL_DestroySurface(rgba);

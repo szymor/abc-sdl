@@ -251,7 +251,9 @@ Requested fixes that are active by default:
   silhouette masks as alpha (this preserves the crayons' graphite tips and
   black dots); shape masks (e.g. the pineapple in letter A) are applied the
   same way. Animation backdrops remove only border-connected black, so
-  interior black artwork is kept.
+  interior black artwork is kept. Magenta is keyed only when it forms the
+  border-connected backdrop, so opaque magenta artwork such as PIES' rabbit
+  body stays solid.
 * **Crayon toolbar:** `kHelp`, `kReset`, `kPrint` and `kBack` animate
   independently, not as a batch. Each starts hidden with its triangular tip
   visible (`_DoKiedyWsowac` pixels), rises when hovered, and slides back down
