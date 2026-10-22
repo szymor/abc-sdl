@@ -206,6 +206,10 @@ Requested fixes that are active by default:
   Correct picks replace the glass with the matching juice; wrong picks show
   the upside-down empty glass but do not count toward completion. After
   completion, valid fruits remain clickable and still refill the glass.
+* **TELEFON matching:** matching a left handset to its right phone removes
+  the handset patch and shows the phone patch; this is a static frame swap,
+  not an animation. Object hitboxes are the component rectangles; TELEFON does
+  not use bitmap mouse masks.
 * **Zgadywanka 3 selection:** the left target must be chosen first; a
   right-side object clicked first is ignored. The left target uses its own
   red-outline abnormal frame for selection; there is no white selection

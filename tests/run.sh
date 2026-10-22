@@ -465,6 +465,26 @@ if [ "$(grep -c "zg success cue" "$TMP/zgcues.log")" -ne 3 ] ||
 fi
 echo "   per-item success cues and one completion cue per completed task"
 
+echo "== TELEFON handle-to-phone match"
+cat > "$TMP/telefon.txt" <<EOF
+scene 17111
+wait 100
+shot $TMP/telefon-rest.png
+click 125 400
+click 554 273
+wait 100
+shot $TMP/telefon-pair.png
+dump
+EOF
+SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
+    --script "$TMP/telefon.txt" > "$TMP/telefon.log" 2>&1
+grep -q "scene=17111 found=1" "$TMP/telefon.log"
+if cmp -s "$TMP/telefon-rest.png" "$TMP/telefon-pair.png"; then
+    echo "TELEFON phone patch was not shown after matching" >&2
+    exit 1
+fi
+echo "   matching the handset removes it and shows the phone patch"
+
 echo "== SOK juice glass"
 cat > "$TMP/sok.txt" <<'EOF'
 scene 16108

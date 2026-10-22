@@ -1104,8 +1104,13 @@ static bool zg3_click(Scene *s, int x, int y, Comp *hit)
         o->selected = false;
     }
     if (z) {
+        /* TELEFON's right-side patches are the phone with its handset; show
+           the matched patch.  BUTY's z hotspots have no bitmap, so this is a
+           no-op there. */
+        z->state = ST_ABNORMAL;
         z->found = true;
         z->selected = false;
+        z->hover_lock = true;
     }
     s->selected_idx = -1;
     s->selected_group = 0;
