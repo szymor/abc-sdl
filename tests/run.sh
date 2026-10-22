@@ -465,6 +465,31 @@ if [ "$(grep -c "zg success cue" "$TMP/zgcues.log")" -ne 3 ] ||
 fi
 echo "   per-item success cues and one completion cue per completed task"
 
+echo "== SOK juice glass"
+cat > "$TMP/sok.txt" <<'EOF'
+scene 16108
+wait 100
+click 308 95
+wait 100
+dump
+click 109 104
+wait 100
+dump
+click 294 405
+wait 100
+dump
+click 203 250
+wait 100
+dump
+EOF
+ABC_DEBUG=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=dummy "$BIN" \
+    --data "$DATA" --mute --script "$TMP/sok.txt" > "$TMP/sok.log" 2>&1
+grep -q "scene=16108 found=0 target=3" "$TMP/sok.log"
+grep -q "scene=16108 found=1 target=3" "$TMP/sok.log"
+grep -q "scene=16108 found=2 target=3" "$TMP/sok.log"
+grep -q "scene=16108 found=3 .*complete=1" "$TMP/sok.log"
+echo "   wrong items show the mistake glass but do not count; correct picks refill it"
+
 echo "== Zgadywanka 3 selection visual"
 cat > "$TMP/zg3sel.txt" <<'EOF'
 scene 17012

@@ -606,6 +606,10 @@ void modules_setup(Scene *s, const char *data_root)
             s->target_count = visible_o;
         if (s->target_count >= 100)
             s->no_completion = true;
+        /* SOK: exactly three of the six visible items make juice; the other
+           three reveal the upside-down empty-glass mistake frame. */
+        if (s->id == 16108)
+            s->target_count = 3;
     }
 
     if (s->module == 1) {
@@ -933,6 +937,22 @@ static bool zg1_click(Scene *s, int x, int y, Comp *hit)
 
 /* ---------------- zgadywanka 2 ---------------- */
 
+static void zg2_show_glass(Scene *s, int n)
+{
+    for (int i = 1; i <= 7; i++) {
+        Comp *z = find_num(s, 'z', i);
+        if (z)
+            z->state = ST_NORMAL;
+    }
+    char zname[16];
+    snprintf(zname, sizeof(zname), "z%d", n);
+    Comp *z = scene_find(s, zname);
+    if (z) {
+        z->state = ST_ABNORMAL;
+        z->hover_lock = true;
+    }
+}
+
 static bool zg2_click(Scene *s, int x, int y, Comp *hit)
 {
     if (hit && hit->cls == CC_WYSUN)
@@ -945,14 +965,25 @@ static bool zg2_click(Scene *s, int x, int y, Comp *hit)
     int ni = comp_num(hit, 'n');
     if (oi > 0 && !hit->found) {
         comp_play_click(s, hit); /* spoken object name */
-        hit->found = true;
-        char zname[16];
-        snprintf(zname, sizeof(zname), "z%d", oi);
-        Comp *z = scene_find(s, zname);
-        if (z) {
-            z->state = ST_ABNORMAL;
-            z->hover_lock = true;
+        bool correct = (s->id != 16108) || oi <= 3;
+        if (s->id == 16108)
+            zg2_show_glass(s, oi);
+        else {
+            char zname[16];
+            snprintf(zname, sizeof(zname), "z%d", oi);
+            Comp *z = scene_find(s, zname);
+            if (z) {
+                z->state = ST_ABNORMAL;
+                z->hover_lock = true;
+            }
         }
+        if (!correct) {
+            /* SOK's wrong items show the upside-down empty glass but do not
+               count toward completion. */
+            play_bad(s);
+            return true;
+        }
+        hit->found = true;
         s->found_count++;
         if (s->target_count > 0 && s->found_count >= s->target_count) {
             Comp *anim = scene_find(s, "Anim");
