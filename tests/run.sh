@@ -292,6 +292,25 @@ SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute --script "$TMP/iglo.txt" \
 grep -q "scene=3046" "$TMP/iglo.log"
 echo "   IGLO is reachable through the default I arrow cycle"
 
+echo "== maze interaction"
+cat > "$TMP/mazeclick.txt" <<'EOF'
+scene 14016
+wait 100
+click 470 130
+click 460 230
+click 500 100
+wait 100
+dump
+EOF
+ABC_DEBUG=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=dummy "$BIN" \
+    --data "$DATA" --mute --script "$TMP/mazeclick.txt" > "$TMP/mazeclick.log" 2>&1
+grep -q "scene=14016 .*complete=0" "$TMP/mazeclick.log"
+if grep -q "click Wyj" "$TMP/mazeclick.log"; then
+    echo "maze exit pictures were treated as click buttons" >&2
+    exit 1
+fi
+echo "   right-hand goal pictures are not clickable and cannot win"
+
 echo "== IGLO letter-playground hotspot"
 cat > "$TMP/iglo-letter.txt" <<EOF
 scene 2009

@@ -1545,6 +1545,15 @@ bool modules_click(Scene *s, int x, int y, Comp *hit)
         return skladanka_click(s, x, y, hit);
     case 13:
         return szczegoly_click(s, x, y, hit);
+    case 14:
+        /* The right-hand pictures are destinations reached by moving the
+           letter, not clickable buttons.  Consume their clicks silently. */
+        if (hit && (str_ieq(hit->name, "WyjDobre") ||
+                    str_ieq(hit->name, "WyjZle1") ||
+                    str_ieq(hit->name, "WyjZle2") ||
+                    str_ieq(hit->name, "element")))
+            return true;
+        return false;
     case 15:
         return zg1_click(s, x, y, hit);
     case 16:

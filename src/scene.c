@@ -825,8 +825,9 @@ static void load_comp(Scene *s, Comp *c)
         DfmValue *col = dfm_prop(src, "_BMPMapConst.Data");
         if (col) {
             bool shape = false;
-            /* Bottom-up row order matches the scene's wejscieX/Y values. */
-            c->collision = mask_from_blob(col, &c->col_w, &c->col_h, false, &shape);
+            /* Maze collision maps are indexed top-down, matching wejscieX/Y
+               and the visible maze coordinates. */
+            c->collision = mask_from_blob(col, &c->col_w, &c->col_h, true, &shape);
         }
     }
 

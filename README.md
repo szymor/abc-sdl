@@ -200,6 +200,10 @@ Requested fixes that are active by default:
   `Nck`/`Ncm`). The first click keeps the original state-appropriate take;
   later clicks switch variants. Two scenes that reference only one take
   (`3030`, `3070`) use the sibling K/M WAV file.
+* **Maze interaction:** the collision bitmap is indexed in visible top-down
+  coordinates, so the letter follows the pointer through the actual corridors.
+  The right-hand goal pictures are destinations, not buttons; clicking them is
+  consumed silently and can never win the maze.
 * **Letter-playground object hover:** `_BMPMapMouse` masks are used for hit
   testing only, not as sprite alpha. Hovering the A playground pineapple now
   draws its complete replacement patch instead of compositing the new fruit
