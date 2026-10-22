@@ -902,7 +902,8 @@ static void load_comp(Scene *s, Comp *c)
     }
 }
 
-static void add_iglo_hotspot(Scene *s, const char *path)
+static void add_iglo_hotspot(Scene *s, const char *path,
+                             const char *data_root, const char *addon_root)
 {
     int w = 0, h = 0;
     SDL_Texture *tex = load_bmp_texture_file(s->renderer, path, &w, &h);
@@ -933,8 +934,24 @@ static void add_iglo_hotspot(Scene *s, const char *path)
     c->tex_h = c->frame_h = h;
     c->frame_count = 1;
     c->src = NULL;
+
+    /* Match the hover cue of the IGLO word-screen object (3046 / rzecz):
+       use the same embedded abnormal wave. */
+    char *sp = resolve_asset_fallback(data_root, addon_root, "WAV/46H.WAV");
+    if (path_exists(sp)) {
+        size_t sound_len = 0;
+        unsigned char *sound = read_file(sp, &sound_len);
+        if (sound) {
+            c->wav_abnormal = audio_load_mem(sound, (int)sound_len);
+            c->autoplay_abnormal = (c->wav_abnormal != NULL);
+            free(sound);
+        }
+    }
+    free(sp);
+
     if (getenv("ABC_DEBUG"))
-        log_info("IGLO hover hotspot: %s at 148,48 (%dx%d)", path, w, h);
+        log_info("IGLO hover hotspot: %s at 148,48 (%dx%d, sound=%s)",
+                 path, w, h, c->wav_abnormal ? "46H.WAV" : "none");
 }
 
 Scene *scene_load(SDL_Renderer *r, const char *data_root, const char *addon_root, int id)
@@ -1053,7 +1070,7 @@ Scene *scene_load(SDL_Renderer *r, const char *data_root, const char *addon_root
         char *p = resolve_asset_fallback(data_root, addon_root,
                                          "OVR/2009_IGLO_hover.bmp");
         if (path_exists(p))
-            add_iglo_hotspot(s, p);
+            add_iglo_hotspot(s, p, data_root, addon_root);
         free(p);
     }
 

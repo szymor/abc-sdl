@@ -89,8 +89,8 @@ Assets missing from the disc tree are looked up in an addon directory. The
 default is `./addon` in the repository root (also found as `../addon` when
 running from `build/`); `$ABC_ADDON` or `--addon DIR` overrides it. The disc
 tree always wins when it contains the file. The bundled addon currently
-supplies the missing IGLO photo `AVI/46_2.AVI` and the IGLO letter-playground
-hover artwork `OVR/2009_IGLO_hover.bmp`.
+supplies the missing IGLO photo `AVI/46_2.AVI`, the IGLO letter-playground
+hover artwork `OVR/2009_IGLO_hover.bmp`, and its hover cue `WAV/46H.WAV`.
 
 Default start scene is `100` (splash). Useful options:
 
@@ -190,7 +190,8 @@ Requested fixes that are active by default:
   it is reachable by default; the word screen and puzzle already exist, and
   the bundled addon supplies its missing photo. The I letter playground also
   uses `OVR/2009_IGLO_hover.bmp`: hovering the baked igloo shows the addon
-  artwork, and clicking it opens IGLO.
+  artwork and plays the same 0.3 s hover cue as the IGLO word-screen object
+  (`WAV/46H.WAV`); clicking it opens IGLO.
 * **Word-arrow audio:** clicking a word-screen arrow plays the target word's
   click WAV. That WAV is no longer stopped by the immediately following scene
   change, so the arrow click is actually audible before the next word appears.

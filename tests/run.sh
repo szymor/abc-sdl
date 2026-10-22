@@ -306,15 +306,17 @@ click 220 100
 wait 150
 dump
 EOF
-ABC_DEBUG=1 SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --addon "$ROOT/addon" --mute \
+ABC_DEBUG=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=dummy "$BIN" \
+    --data "$DATA" --addon "$ROOT/addon" \
     --script "$TMP/iglo-letter.txt" > "$TMP/iglo-letter.log" 2>&1
-grep -q "IGLO hover hotspot" "$TMP/iglo-letter.log"
+grep -q "IGLO hover hotspot: .*sound=46H.WAV" "$TMP/iglo-letter.log"
+grep -q "audio cue (0.3 s)" "$TMP/iglo-letter.log"
 grep -q "scene=3046" "$TMP/iglo-letter.log"
 if cmp -s "$TMP/iglo-letter-rest.png" "$TMP/iglo-letter-hover.png"; then
     echo "IGLO hover image did not appear" >&2
     exit 1
 fi
-echo "   addon IGLO image appears on hover and opens word 3046"
+echo "   addon IGLO image and hover cue appear; clicking opens word 3046"
 
 echo "== addon fallback"
 cat > "$TMP/addon.txt" <<'EOF'
