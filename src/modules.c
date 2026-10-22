@@ -972,74 +972,108 @@ static bool zg2_click(Scene *s, int x, int y, Comp *hit)
 
 /* ---------------- zgadywanka 3 ---------------- */
 
+static void zg3_clear_selection(Scene *s)
+{
+    int sel = s->selected_idx;
+    if (sel > 0) {
+        Comp *o = find_num(s, 'o', sel);
+        if (o) {
+            o->state = ST_NORMAL;
+            o->selected = false;
+        }
+    }
+    Comp *z = sel > 0 ? find_num(s, 'z', sel) : NULL;
+    if (z)
+        z->selected = false;
+    s->selected_idx = -1;
+    s->selected_group = 0;
+}
+
 static bool zg3_click(Scene *s, int x, int y, Comp *hit)
 {
     (void)x;
     (void)y;
     if (hit && hit->cls == CC_WYSUN)
         return false;
-    if (!hit) {
-        play_bad(s);
-        return false;
-    }
-    int oi = comp_num(hit, 'o');
-    int zi = comp_num(hit, 'z');
+    int oi = hit ? comp_num(hit, 'o') : 0;
+    int zi = hit ? comp_num(hit, 'z') : 0;
     int n = oi > 0 ? oi : zi;
-    if (n <= 0)
-        return false;
-    int group = oi > 0 ? 1 : 2;
-    /* The task order is fixed: choose the left target first, then its
-       right-side match.  A right object cannot start a selection. */
-    if (s->selected_idx < 0 && zi > 0) {
-        if (getenv("ABC_DEBUG"))
-            fprintf(stderr, "zg3 right-first ignored: %s\n", hit->name);
-        return true;
-    }
+
     if (s->selected_idx < 0) {
+        if (n <= 0)
+            return hit != NULL;
+        if (hit->found) {
+            if (getenv("ABC_DEBUG"))
+                fprintf(stderr, "zg3 already matched: %s\n", hit->name);
+            return true;
+        }
+        /* The task order is fixed: a right object cannot start a selection. */
+        if (zi > 0) {
+            if (getenv("ABC_DEBUG"))
+                fprintf(stderr, "zg3 right-first ignored: %s\n", hit->name);
+            return true;
+        }
         s->selected_idx = n;
-        s->selected_group = group;
+        s->selected_group = 1;
         hit->selected = true;
-        if (oi > 0)
-            comp_set_state(s, hit, ST_ABNORMAL); /* red selection outline */
+        comp_set_state(s, hit, ST_ABNORMAL); /* red selection outline */
         click_visual(s, hit);
         return true;
     }
+
     int sel = s->selected_idx;
-    if (sel == n && s->selected_group == group) {
-        /* second click on the same item deselects it */
-        s->selected_idx = -1;
-        Comp *o = find_num(s, 'o', sel);
-        if (o)
-            o->state = ST_NORMAL;
+    if (n <= 0) {
+        /* Clicking off the objects cancels the pending left selection. */
+        zg3_clear_selection(s);
+        play_bad(s);
         return true;
     }
-    if (sel == n && s->selected_group != group) {
-        /* Correct pair. */
-        Comp *o = find_num(s, 'o', n);
-        Comp *z = find_num(s, 'z', n);
-        if (o) {
-            o->state = ST_SPECIAL;
-            o->hover_lock = true;
-            o->found = true;
-        }
-        if (z) {
-            z->hover_lock = true;
-            z->found = true;
-        }
-        s->found_count++;
-        s->selected_idx = -1;
-        s->selected_group = 0;
-        if (s->found_count >= s->target_count)
-            scene_complete(s, 1800);
-        else
-            play_zg_success(s);
+    if (hit->found) {
+        /* A completed pair cannot be matched again. */
+        zg3_clear_selection(s);
         return true;
     }
+    if (oi > 0) {
+        if (n == sel) {
+            /* Second click on the selected left target deselects it. */
+            zg3_clear_selection(s);
+            return true;
+        }
+        /* Choosing another left target replaces the pending selection. */
+        zg3_clear_selection(s);
+        s->selected_idx = n;
+        s->selected_group = 1;
+        hit->selected = true;
+        comp_set_state(s, hit, ST_ABNORMAL);
+        click_visual(s, hit);
+        return true;
+    }
+
+    /* Right-side click: only the matching, unfinished pair is valid. */
     Comp *o = find_num(s, 'o', sel);
-    if (o)
-        o->state = ST_NORMAL;
+    Comp *z = find_num(s, 'z', sel);
+    if (n != sel) {
+        zg3_clear_selection(s);
+        play_bad(s);
+        return true;
+    }
+    if (o) {
+        o->state = ST_SPECIAL;
+        o->hover_lock = true;
+        o->found = true;
+        o->selected = false;
+    }
+    if (z) {
+        z->found = true;
+        z->selected = false;
+    }
     s->selected_idx = -1;
-    play_bad(s);
+    s->selected_group = 0;
+    s->found_count++;
+    if (s->found_count >= s->target_count)
+        scene_complete(s, 1800);
+    else
+        play_zg_success(s);
     return true;
 }
 

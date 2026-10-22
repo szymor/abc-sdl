@@ -206,7 +206,8 @@ Requested fixes that are active by default:
   right-side object clicked first is ignored. The left target uses its own
   red-outline abnormal frame for selection; there is no white selection
   rectangle. A correct pair switches that target to its paired-object special
-  frame.
+  frame and locks both items against another match. A wrong second click
+  clears the pending left selection.
 * **Maze interaction:** the collision bitmap is indexed in visible top-down
   coordinates, with white as the walkable floor and black as walls, so the
   letter follows the pointer through the actual corridors. The right-hand goal
