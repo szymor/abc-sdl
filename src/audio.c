@@ -27,6 +27,11 @@ static int cache_count = 0, cache_cap = 0;
 
 static char *music_sig = NULL;
 static bool music_paused = false;
+#define MUSIC_MAX_TRACKS 16
+static char *music_paths[MUSIC_MAX_TRACKS];
+static int music_count = 0;
+static int music_current = -1;
+static bool music_random_loop = false;
 
 #ifdef HAVE_FLUIDSYNTH
 static int music_pause_tick = 0;
@@ -120,6 +125,56 @@ static bool synth_init(void)
     return true;
 }
 
+static int music_next_index(void)
+{
+    if (music_count <= 0)
+        return -1;
+    if (!music_random_loop)
+        return (music_current + 1) % music_count;
+    int idx = rand() % music_count;
+    if (music_count > 1 && idx == music_current)
+        idx = (idx + 1 + rand() % (music_count - 1)) % music_count;
+    return idx;
+}
+
+static bool music_start_index(int idx)
+{
+    if (!fs_ok || !fs_synth || idx < 0 || idx >= music_count)
+        return false;
+    if (fs_player) {
+        fluid_player_stop(fs_player);
+        delete_fluid_player(fs_player);
+        fs_player = NULL;
+    }
+    fs_player = new_fluid_player(fs_synth);
+    if (!fs_player)
+        return false;
+    if (fluid_player_add(fs_player, music_paths[idx]) != FLUID_OK) {
+        delete_fluid_player(fs_player);
+        fs_player = NULL;
+        return false;
+    }
+    /* One file per player.  audio_tick() picks the next random track when
+       this one finishes. */
+    fluid_player_set_loop(fs_player, 0);
+    if (fluid_player_play(fs_player) != FLUID_OK) {
+        delete_fluid_player(fs_player);
+        fs_player = NULL;
+        return false;
+    }
+    music_current = idx;
+    if (getenv("ABC_DEBUG"))
+        log_info("music track: %s", music_paths[idx]);
+    return true;
+}
+
+static void music_start_next(void)
+{
+    int idx = music_next_index();
+    if (idx >= 0)
+        music_start_index(idx);
+}
+
 static void synth_shutdown(void)
 {
     fs_ok = false;
@@ -164,6 +219,7 @@ bool audio_init(void)
     for (int i = 0; i < AUDIO_TRACKS; i++)
         tracks[i] = MIX_CreateTrack(mixer);
     audio_enabled = true;
+    srand((unsigned)SDL_GetTicks());
 #ifdef HAVE_FLUIDSYNTH
     synth_init();
 #endif
@@ -172,6 +228,7 @@ bool audio_init(void)
 
 void audio_shutdown(void)
 {
+    audio_music_stop();
 #ifdef HAVE_FLUIDSYNTH
     synth_shutdown();
 #endif
@@ -357,7 +414,12 @@ void audio_stop_all(void)
 
 void audio_tick(void)
 {
-    (void)0;
+#ifdef HAVE_FLUIDSYNTH
+    if (music_paused || video_active || music_count <= 0 || !fs_player)
+        return;
+    if (fluid_player_get_status(fs_player) == FLUID_PLAYER_DONE)
+        music_start_next();
+#endif
 }
 
 void audio_music_stop(void)
@@ -370,6 +432,12 @@ void audio_music_stop(void)
     }
 #endif
     music_paused = false;
+    music_current = -1;
+    music_count = 0;
+    for (int i = 0; i < MUSIC_MAX_TRACKS; i++) {
+        free(music_paths[i]);
+        music_paths[i] = NULL;
+    }
     free(music_sig);
     music_sig = NULL;
 }
@@ -458,38 +526,29 @@ void audio_music_play(const char *const *paths, int count, bool random_loop, con
         SDL_ClearAudioStream(fs_stream);
         SDL_UnlockAudioStream(fs_stream);
     }
-    int order[16];
-    if (count > 16)
-        count = 16;
-    for (int i = 0; i < count; i++)
-        order[i] = i;
-    if (random_loop) {
-        for (int i = count - 1; i > 0; i--) {
-            int j = rand() % (i + 1);
-            int t = order[i];
-            order[i] = order[j];
-            order[j] = t;
-        }
+#endif
+
+    for (int i = 0; i < MUSIC_MAX_TRACKS; i++) {
+        free(music_paths[i]);
+        music_paths[i] = NULL;
     }
-    fs_player = new_fluid_player(fs_synth);
-    if (!fs_player)
-        return;
-    int added = 0;
-    for (int i = 0; i < count; i++) {
-        if (fluid_player_add(fs_player, paths[order[i]]) == FLUID_OK)
-            added++;
-    }
-    if (!added) {
-        delete_fluid_player(fs_player);
-        fs_player = NULL;
+    music_count = count < MUSIC_MAX_TRACKS ? count : MUSIC_MAX_TRACKS;
+    for (int i = 0; i < music_count; i++)
+        music_paths[i] = xstrdup(paths[i]);
+    music_current = -1;
+    music_random_loop = random_loop;
+    free(music_sig);
+    music_sig = signature ? xstrdup(signature) : NULL;
+
+#ifdef HAVE_FLUIDSYNTH
+    int idx = music_next_index();
+    if (idx < 0 || !music_start_index(idx)) {
+        log_warn("music: no playable MIDI track for %s", signature ? signature : "?");
         return;
     }
-    fluid_player_set_loop(fs_player, 0);
-    fluid_player_play(fs_player);
-    log_info("music: %s (%d tracks)", signature ? signature : "?", added);
+    log_info("music: %s (random=%d, %d tracks)", signature ? signature : "?",
+             (int)random_loop, music_count);
 #else
     (void)random_loop;
 #endif
-    free(music_sig);
-    music_sig = signature ? xstrdup(signature) : NULL;
 }

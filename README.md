@@ -30,7 +30,7 @@ The reverse-engineering specification this port is based on lives in
 | Spot the difference (Szczegoly) | complete — paired differences, highlights, completion |
 | Maze (Labirynt) | complete — 1-bpp collision map, cursor-following player, good/bad exits |
 | Zgadywanka 1–4 | complete — all 35 scenes, counters and feedback |
-| Audio | WAV one-shots + spoken task cues (SDL3_mixer), shuffled MIDI playlists (FluidSynth); one spoken cue at a time, while short SFX such as the wrong-answer buzz may mix over speech |
+| Audio | WAV one-shots + spoken task cues (SDL3_mixer), looping shuffled MIDI playlists (FluidSynth); one spoken cue at a time, while short SFX such as the wrong-answer buzz may mix over speech |
 | Video (AVI) | complete — Cinepak/MSVideo1/Indeo3 decoded by FFmpeg into the `TEkran` rect, with audio |
 | Cursors (`PEDZEL`, `LIT_*`) | brush cursor extracted from `ABC.EXE`; the maze draws the word's letter as a sprite (the `LIT_*` resources are available in `src/cursors_data.h`) |
 | Printing | exports a PNG instead of GDI printing |
@@ -123,7 +123,9 @@ the hub for a letter/game and returning restores the same scroll offset.
 ### Audio
 
 WAV playback uses SDL3_mixer. MIDI playlists are rendered with FluidSynth into
-an SDL audio stream. The first existing soundfont among
+an SDL audio stream. Each track is played once and then followed by a randomly
+chosen track from the same playlist, so the music loops without repeating a
+fixed order. The first existing soundfont among
 `/usr/share/soundfonts/FluidR3_GM.sf2`, `SC-55`, `freepats`, … is used; set
 `ABC_SOUNDFONT=/path/file.sf2` to override.
 
