@@ -465,6 +465,31 @@ if [ "$(grep -c "zg success cue" "$TMP/zgcues.log")" -ne 3 ] ||
 fi
 echo "   per-item success cues and one completion cue per completed task"
 
+echo "== FOKA balls"
+cat > "$TMP/foka.txt" <<'EOF'
+scene 18031
+wait 100
+click 558 161
+wait 100
+dump
+click 125 332
+wait 100
+dump
+click 292 142
+wait 100
+dump
+EOF
+ABC_DEBUG=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=dummy "$BIN" \
+    --data "$DATA" --script "$TMP/foka.txt" > "$TMP/foka.log" 2>&1
+grep -q "scene=18031 found=0 target=2" "$TMP/foka.log"
+grep -q "scene=18031 found=1 target=2" "$TMP/foka.log"
+grep -q "scene=18031 found=2 target=2" "$TMP/foka.log"
+if grep -q "click o1 .*audio=yes" "$TMP/foka.log"; then
+    echo "FOKA wrong ball produced the correct-item cue" >&2
+    exit 1
+fi
+echo "   only the two letter-ball seals count and explain themselves"
+
 echo "== TELEFON handle-to-phone match"
 cat > "$TMP/telefon.txt" <<EOF
 scene 17111

@@ -206,6 +206,10 @@ Requested fixes that are active by default:
   Correct picks replace the glass with the matching juice; wrong picks show
   the upside-down empty glass but do not count toward completion. After
   completion, valid fruits remain clickable and still refill the glass.
+* **FOKA balls:** only the two seals with letter-bearing balls (`o4`, `o5`)
+  count. Wrong balls show the no-ball mistake patch, do not count, and do not
+  play the correct-object explanation; the two correct seals use `s03dz` as
+  the completion cue.
 * **TELEFON matching:** matching a left handset to its right phone removes
   the handset patch and shows the phone patch; this is a static frame swap,
   not an animation. Object hitboxes are the component rectangles; TELEFON does

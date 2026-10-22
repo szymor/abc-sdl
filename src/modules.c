@@ -610,6 +610,11 @@ void modules_setup(Scene *s, const char *data_root)
            three reveal the upside-down empty-glass mistake frame. */
         if (s->id == 16108)
             s->target_count = 3;
+        /* FOKA: two seals carry a ball with a letter (the F/spotted balls). */
+        if (s->id == 18031) {
+            s->target_count = 2;
+            s->no_completion = false;
+        }
     }
 
     if (s->module == 1) {
@@ -1133,6 +1138,21 @@ static bool zg4_click(Scene *s, int x, int y, Comp *hit)
     if (hit) {
         int oi = comp_num(hit, 'o');
         if (oi > 0 && !hit->found) {
+            if (s->id == 18031) {
+                bool correct = oi == 4 || oi == 5;
+                hit->state = ST_ABNORMAL;
+                hit->hover_lock = true;
+                comp_play_click(s, hit); /* o4/o5 speak the correct explanation */
+                if (!correct) {
+                    play_bad(s);
+                    return true;
+                }
+                hit->found = true;
+                s->found_count++;
+                if (s->found_count >= s->target_count)
+                    scene_complete(s, 1800);
+                return true;
+            }
             hit->found = true;
             hit->state = ST_ABNORMAL;
             hit->hover_lock = true;
