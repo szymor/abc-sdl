@@ -124,6 +124,7 @@ typedef struct Scene {
     char music_sig[640];
 
     MIX_Audio *wav_ok, *wav_bad, *wav_select, *wav_default, *wav_count;
+    MIX_Audio *wav_count_alarm;
     MIX_Audio *maze_ok, *maze_bad1, *maze_bad2;
 
     int target_count, found_count;

@@ -418,27 +418,35 @@ if [ "$(grep -c "zg success cue" "$TMP/zgcues.log")" -ne 3 ] ||
 fi
 echo "   per-item success cues and one completion cue per completed task"
 
-echo "== Szczegoly success/final cue timing"
+echo "== Szczegoly success/penultimate/final cue timing"
 cat > "$TMP/szczcues.txt" <<'EOF'
 scene 13077
 wait 100
+click 236 12
+wait 100
+dump
 click 261 37
 click 183 63
 click 35 127
 click 34 243
 click 252 281
+wait 100
+dump
 click 55 398
 wait 100
+dump
 EOF
 ABC_DEBUG=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=dummy "$BIN" \
     --data "$DATA" --script "$TMP/szczcues.txt" > "$TMP/szczcues.log" 2>&1
-if [ "$(grep -c "szczegoly success cue" "$TMP/szczcues.log")" -ne 5 ] ||
+if [ "$(grep -c "scene=13077 found=0 target=6" "$TMP/szczcues.log")" -ne 1 ] ||
+   [ "$(grep -c "szczegoly success cue" "$TMP/szczcues.log")" -ne 4 ] ||
+   [ "$(grep -c "szczegoly penultimate cue" "$TMP/szczcues.log")" -ne 1 ] ||
    [ "$(grep -c "zg/activity completion cue" "$TMP/szczcues.log")" -ne 1 ]; then
-    echo "Szczegoly success/final cues are mistimed" >&2
-    grep -E "szczegoly success cue|completion cue|scene=" "$TMP/szczcues.log" >&2
+    echo "Szczegoly hit/cue timing is wrong" >&2
+    grep -E "szczegoly|completion cue|scene=13077" "$TMP/szczcues.log" >&2
     exit 1
 fi
-echo "   per-difference success cue and one final summary"
+echo "   ellipse-only hits; per-difference cue; penultimate cue; one final summary"
 
 echo "== word-arrow audio across navigation"
 cat > "$TMP/arrowaudio.txt" <<'EOF'

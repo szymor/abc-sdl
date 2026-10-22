@@ -143,6 +143,15 @@ static void play_szczegoly_success(Scene *s)
     audio_play(s->wav_default, 1.0f);
 }
 
+static void play_szczegoly_penultimate(Scene *s)
+{
+    if (!s->wav_count_alarm)
+        return;
+    if (getenv("ABC_DEBUG"))
+        log_info("szczegoly penultimate cue");
+    audio_play(s->wav_count_alarm, 1.0f);
+}
+
 /* The task rules are the same cue HELP plays; kReset replays it after a
    reset instead of repeating kReset's own hover phrase. */
 static void play_rules_cue(Scene *s)
@@ -412,6 +421,7 @@ void modules_setup(Scene *s, const char *data_root)
         if (c->cls == CC_CHECK) {
             s->target_count = (int)dfm_int(c->src, "_Licznik", 0);
             s->wav_count = load_path(s, dfm_str(c->src, "_WaveLicznik", NULL));
+            s->wav_count_alarm = load_path(s, dfm_str(c->src, "_WaveLicznikAlarm", NULL));
             break;
         }
     }
@@ -873,12 +883,14 @@ static bool szczegoly_click(Scene *s, int x, int y, Comp *hit)
             s->found_count++;
             if (s->found_count >= s->target_count)
                 scene_complete(s, 1800);
+            else if (s->found_count == s->target_count - 1)
+                play_szczegoly_penultimate(s);
             else
                 play_szczegoly_success(s);
             return true;
         }
     }
-    play_bad(s);
+    /* Clicking outside every difference ellipse is silent. */
     return hit != NULL;
 }
 

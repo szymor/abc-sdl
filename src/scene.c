@@ -1118,6 +1118,20 @@ bool comp_contains(Scene *s, Comp *c, int x, int y)
         return false;
     if ((float)x < r.x || (float)y < r.y || (float)x >= r.x + r.w || (float)y >= r.y + r.h)
         return false;
+    if (s->module == 13 && c->name[0] &&
+        (c->name[0] == 'x' || c->name[0] == 'y') &&
+        isdigit((unsigned char)c->name[1])) {
+        /* Szczegoly's invisible difference hotspots are ellipse-shaped. */
+        float cx = r.x + (r.w - 1) * 0.5f;
+        float cy = r.y + (r.h - 1) * 0.5f;
+        float rx = (r.w - 1) * 0.5f;
+        float ry = (r.h - 1) * 0.5f;
+        if (rx <= 0 || ry <= 0)
+            return false;
+        float dx = ((float)x - cx) / rx;
+        float dy = ((float)y - cy) / ry;
+        return dx * dx + dy * dy <= 1.0f;
+    }
     if (c->mask && c->mask_shape && c->mask_mouse) {
         int sel = comp_frame_selector(c);
         int frame = sel <= 0 ? 0 : sel - 1;
