@@ -206,6 +206,9 @@ Requested fixes that are active by default:
   Correct picks replace the glass with the matching juice; wrong picks show
   the upside-down empty glass but do not count toward completion. After
   completion, valid fruits remain clickable and still refill the glass.
+* **OWOCE per-item audio:** each correct fruit uses its own click sample
+  (`29a`–`29c`); the generic `waveOK` is used only for Zg4 items without a
+  per-item voice.
 * **FOKA balls:** only the two seals with letter-bearing balls (`o4`, `o5`)
   count. Wrong balls show the no-ball mistake patch, do not count, and do not
   play the correct-object explanation; the two correct seals use `s03dz` as

@@ -465,6 +465,24 @@ if [ "$(grep -c "zg success cue" "$TMP/zgcues.log")" -ne 3 ] ||
 fi
 echo "   per-item success cues and one completion cue per completed task"
 
+echo "== OWOCE per-item audio"
+cat > "$TMP/owoce.txt" <<'EOF'
+scene 18091
+wait 100
+click 107 400
+click 320 80
+click 320 400
+wait 100
+dump
+EOF
+ABC_DEBUG=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=dummy "$BIN" \
+    --data "$DATA" --script "$TMP/owoce.txt" > "$TMP/owoce.log" 2>&1
+grep -q "click o1 .*audio=yes" "$TMP/owoce.log"
+grep -q "click o2 .*audio=yes" "$TMP/owoce.log"
+grep -q "click o3 .*audio=yes" "$TMP/owoce.log"
+grep -q "scene=18091 found=3 .*complete=1" "$TMP/owoce.log"
+echo "   each correct fruit plays its own 29a/29b/29c sample"
+
 echo "== FOKA balls"
 cat > "$TMP/foka.txt" <<'EOF'
 scene 18031

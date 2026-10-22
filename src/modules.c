@@ -1153,6 +1153,8 @@ static bool zg4_click(Scene *s, int x, int y, Comp *hit)
                     scene_complete(s, 1800);
                 return true;
             }
+            comp_play_click(s, hit); /* per-item cue when the scene has one */
+            bool item_voice = hit->wav_click || hit->wav_abnormal;
             hit->found = true;
             hit->state = ST_ABNORMAL;
             hit->hover_lock = true;
@@ -1160,7 +1162,7 @@ static bool zg4_click(Scene *s, int x, int y, Comp *hit)
             if (!s->no_completion && s->target_count > 0 &&
                 s->found_count >= s->target_count)
                 scene_complete(s, 1800);
-            else
+            else if (!item_voice)
                 play_zg_success(s);
             return true;
         }
