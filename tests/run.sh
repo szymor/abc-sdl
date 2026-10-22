@@ -481,6 +481,11 @@ dump
 click 203 250
 wait 100
 dump
+shot $TMP/sok-complete.png
+click 109 104
+wait 100
+shot $TMP/sok-after.png
+dump
 EOF
 ABC_DEBUG=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=dummy "$BIN" \
     --data "$DATA" --mute --script "$TMP/sok.txt" > "$TMP/sok.log" 2>&1
@@ -488,6 +493,10 @@ grep -q "scene=16108 found=0 target=3" "$TMP/sok.log"
 grep -q "scene=16108 found=1 target=3" "$TMP/sok.log"
 grep -q "scene=16108 found=2 target=3" "$TMP/sok.log"
 grep -q "scene=16108 found=3 .*complete=1" "$TMP/sok.log"
+if cmp -s "$TMP/sok-complete.png" "$TMP/sok-after.png"; then
+    echo "SOK glass did not refill after completion" >&2
+    exit 1
+fi
 echo "   wrong items show the mistake glass but do not count; correct picks refill it"
 
 echo "== Zgadywanka 3 selection visual"

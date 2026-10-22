@@ -963,6 +963,15 @@ static bool zg2_click(Scene *s, int x, int y, Comp *hit)
     }
     int oi = comp_num(hit, 'o');
     int ni = comp_num(hit, 'n');
+    /* SOK remains interactive after completion: a valid fruit still refills
+       the glass with its juice, without changing the completed counter. */
+    if (s->complete && s->id == 16108 && oi > 0) {
+        comp_play_click(s, hit);
+        zg2_show_glass(s, oi);
+        if (oi > 3)
+            play_bad(s);
+        return true;
+    }
     if (oi > 0 && !hit->found) {
         comp_play_click(s, hit); /* spoken object name */
         bool correct = (s->id != 16108) || oi <= 3;

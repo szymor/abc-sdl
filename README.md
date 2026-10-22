@@ -204,7 +204,8 @@ Requested fixes that are active by default:
   (`3030`, `3070`) use the sibling K/M WAV file.
 * **SOK juice glass:** exactly three of the six visible items are correct.
   Correct picks replace the glass with the matching juice; wrong picks show
-  the upside-down empty glass but do not count toward completion.
+  the upside-down empty glass but do not count toward completion. After
+  completion, valid fruits remain clickable and still refill the glass.
 * **Zgadywanka 3 selection:** the left target must be chosen first; a
   right-side object clicked first is ignored. The left target uses its own
   red-outline abnormal frame for selection; there is no white selection
