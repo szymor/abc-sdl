@@ -499,7 +499,7 @@ static void app_back(Scene **ps, int *scene_id, int *hist_n, int *history,
     Scene *s = *ps;
     if (g_paused) {
         g_paused = false;
-        if (g_music_on)
+        if (g_music_on && g_sound_on)
             audio_music_resume();
         return;
     }
