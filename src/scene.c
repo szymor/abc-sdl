@@ -1005,6 +1005,16 @@ static void add_iglo_hotspot(Scene *s, const char *path,
                  path, w, h, c->wav_abnormal ? "46H.WAV" : "none");
 }
 
+static void set_arrow_click_sound(Scene *s, Comp *c, const char *win_path)
+{
+    snprintf(c->click_file, sizeof(c->click_file), "%s", win_path);
+    char *p = scene_resolve_asset(s, win_path);
+    c->wav_click = file_exists(p) ? audio_load_file(p) : NULL;
+    free(p);
+    if (getenv("ABC_DEBUG"))
+        log_info("arrow %s click sound -> %s", c->name, win_path);
+}
+
 Scene *scene_load(SDL_Renderer *r, const char *data_root, const char *addon_root, int id)
 {
     char rel[64];
@@ -1109,10 +1119,18 @@ Scene *scene_load(SDL_Renderer *r, const char *data_root, const char *addon_root
        cycle through IGLO by default; its word screen and game are complete. */
     if (id == 3047) {
         Comp *l = scene_find(s, "browWyrL");
-        if (l) { l->modal_set = true; l->modal_result = 3046; }
+        if (l) {
+            l->modal_set = true;
+            l->modal_result = 3046;
+            set_arrow_click_sound(s, l, "\\WAV\\46cm.WAV");
+        }
     } else if (id == 3050) {
         Comp *r = scene_find(s, "browWyrP");
-        if (r) { r->modal_set = true; r->modal_result = 3046; }
+        if (r) {
+            r->modal_set = true;
+            r->modal_result = 3046;
+            set_arrow_click_sound(s, r, "\\WAV\\46ck.WAV");
+        }
     }
 
     modules_setup(s, data_root);

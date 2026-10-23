@@ -167,8 +167,8 @@ quirks cannot flip the meaning of the mask:
 
 * the train's wagon hitboxes are derived from the 4050×145 mask (25 content
   runs: locomotive + A…Z);
-* the maze's collision map is indexed in BMP/bottom-up row order, which is the
-  order its `wejscieX/Y` entrance coordinates expect;
+* the maze's collision map is indexed top-down, matching its `wejscieX/Y`
+  entrance coordinates; white is walkable floor and black is wall;
 * sprite masks are used for mouse hit testing when they form a silhouette;
 * Skladanka placed parts use their mask as an alpha silhouette; the mask
   palette is inspected because most use white=0/black=1 but some (AUTO `m4`)
@@ -189,8 +189,10 @@ navigation/media fixes listed below:
 Requested fixes that are active by default:
 
 * **IGLO navigation:** the I word arrows are re-linked through IGLO (3046), so
-  it is reachable by default; the word screen and puzzle already exist, and
-  the bundled addon supplies its missing photo. The I letter playground also
+  it is reachable by default; the arrow click sounds are re-pointed to IGLO's
+  own samples (`46cm`/`46ck`), not the old IREK/IGŁA targets. The word screen
+  and puzzle already exist, and the bundled addon supplies its missing photo.
+  The I letter playground also
   uses `OVR/2009_IGLO_hover.bmp`: hovering the baked igloo shows the addon
   artwork and plays the same 0.3 s hover cue as the IGLO word-screen object
   (`WAV/46H.WAV`); clicking it opens IGLO.

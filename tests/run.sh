@@ -283,14 +283,21 @@ echo "== IGLO navigation"
 cat > "$TMP/iglo.txt" <<'EOF'
 scene 3047
 wait 100
-click 28 33
+click 20 30
+wait 150
+dump
+scene 3050
 wait 100
+click 620 30
+wait 150
 dump
 EOF
-SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute --script "$TMP/iglo.txt" \
-    > "$TMP/iglo.log" 2>&1
-grep -q "scene=3046" "$TMP/iglo.log"
-echo "   IGLO is reachable through the default I arrow cycle"
+ABC_DEBUG=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=dummy "$BIN" \
+    --data "$DATA" --script "$TMP/iglo.txt" > "$TMP/iglo.log" 2>&1
+grep -q "arrow browWyrL click sound -> \\\\WAV\\\\46cm.WAV" "$TMP/iglo.log"
+grep -q "arrow browWyrP click sound -> \\\\WAV\\\\46ck.WAV" "$TMP/iglo.log"
+[ "$(grep -c "scene=3046" "$TMP/iglo.log")" -eq 2 ]
+echo "   IREK and IGŁA arrows reach IGLO with IGLO's click sounds"
 
 echo "== maze interaction"
 cat > "$TMP/mazeclick.txt" <<'EOF'
