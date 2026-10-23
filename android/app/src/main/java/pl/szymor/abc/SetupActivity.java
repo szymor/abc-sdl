@@ -253,7 +253,7 @@ public class SetupActivity extends Activity {
         pickData.setEnabled(true);
         pickAddon.setEnabled(true);
         importButton.setVisibility(has && plan == null ? View.GONE : View.VISIBLE);
-        playButton.setVisibility(has || (plan != null && plan.hasAbc()) ? View.VISIBLE : View.GONE);
+        playButton.setVisibility(has ? View.VISIBLE : View.GONE);
         progress.setVisibility(View.GONE);
     }
 

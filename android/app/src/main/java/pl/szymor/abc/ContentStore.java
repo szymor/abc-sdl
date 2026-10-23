@@ -24,14 +24,16 @@ final class ContentStore {
 
     static File baseDir(Context context) {
         File internal = context.getFilesDir();
-        // A developer can push a test tree into internal storage with
-        // `adb shell run-as ...`; prefer it only when it actually contains
-        // game data.  Normal imports still go to app-specific external
-        // storage, which is writable through the Storage Access Framework.
+        File external = context.getExternalFilesDir(null);
+        // App-specific external storage is the normal import target.  A
+        // developer can also push a test tree into internal storage with
+        // `adb shell run-as ...`; use it only when external has no data.
+        if (external != null && new File(external, "abc/FRM").isDirectory()) {
+            return external;
+        }
         if (new File(internal, "abc/FRM").isDirectory()) {
             return internal;
         }
-        File external = context.getExternalFilesDir(null);
         return external != null ? external : internal;
     }
 
@@ -206,6 +208,9 @@ final class ContentStore {
     static void removeContent(Context context) {
         deleteRecursive(abcDir(context));
         deleteRecursive(addonDir(context));
+        File internal = context.getFilesDir();
+        deleteRecursive(new File(internal, "abc"));
+        deleteRecursive(new File(internal, "addon"));
         deleteRecursive(stagingAbc(context));
         deleteRecursive(stagingAddon(context));
         deleteRecursive(backupAbc(context));
