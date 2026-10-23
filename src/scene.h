@@ -101,6 +101,7 @@ typedef struct Comp {
     bool found, placed, selected, hover_lock, correct, disabled;
     bool hover_only;          /* word screen overlay: draw only while hovered */
     bool baked_overlay;       /* clickable sprite already present in tlo */
+    uint64_t touch_preview_until; /* touch: keep a hover/preview frame visible */
     int placed_by;            /* Skladanka: source part currently in this slot */
     bool hover_wave_pending;
     uint64_t hover_wave_at;
@@ -180,6 +181,11 @@ typedef struct Scene {
 
     int mouse_x, mouse_y;
     bool mouse_down;
+    bool touch_mode;
+
+    /* Labirynt: touch target (kept after the finger lifts). */
+    int maze_target_x, maze_target_y;
+    bool maze_target_active;
 
     SDL_Renderer *renderer;
 } Scene;
@@ -193,6 +199,9 @@ void scene_render(Scene *s);
 bool scene_click(Scene *s, int x, int y);
 void scene_mouse_down(Scene *s, int x, int y);
 void scene_mouse_up(Scene *s, int x, int y);
+void scene_set_touch_mode(Scene *s, bool touch);
+bool scene_touch_reveal(Scene *s, int x, int y);
+int scene_hit_touch_index(Scene *s, int x, int y, int slop);
 void modules_mouse_down(Scene *s, int x, int y);
 void modules_mouse_up(Scene *s, int x, int y);
 
@@ -209,6 +218,7 @@ void scene_request(Scene *s, int id);
 void scene_complete(Scene *s, int delay_ms);
 void scene_toast(Scene *s, const char *msg, int ms);
 void scene_set_player(Scene *s, int x, int y);
+void scene_set_maze_target(Scene *s, int x, int y);
 void scene_shutdown_cursors(void);
 uint32_t scene_sample_bmp(DfmComponent *src);
 SDL_Surface *scene_bmp_surface(DfmValue *v);
@@ -217,6 +227,9 @@ SDL_Surface *scene_bmp_surface(DfmValue *v);
 void modules_setup(Scene *s, const char *data_root);
 void modules_update(Scene *s, float dt);
 void modules_save_train_scroll(Scene *s);
+bool modules_train_touch_down(Scene *s, int x, int y);
+void modules_train_touch_move(Scene *s, int x, int y);
+bool modules_train_touch_up(Scene *s, int x, int y);
 bool modules_click(Scene *s, int x, int y, Comp *hit);
 void modules_render_overlay(Scene *s);
 const char *scene_word_title(int word);

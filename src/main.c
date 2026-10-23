@@ -2,7 +2,9 @@
 #include "audio.h"
 #include "dfm.h"
 #include "font.h"
+#include "platform/platform.h"
 #include "scene.h"
+#include "ui/hud.h"
 #include "util.h"
 
 #include <SDL3/SDL.h>
@@ -15,6 +17,17 @@
 #include <string.h>
 #include <strings.h>
 #include <sys/stat.h>
+
+typedef struct {
+    bool active;
+    SDL_FingerID finger;
+    float down_x, down_y;
+    int lx, ly;
+    bool dragged;
+    bool reveal_only;
+    bool train_gesture;
+    bool hud;
+} TouchState;
 
 typedef struct {
     const char *data_root;
@@ -77,6 +90,13 @@ static const char *pick_data_root(const char *requested)
         snprintf(buf, sizeof(buf), "%s", requested);
         return buf;
     }
+    const char *platform_root = platform_data_root_default();
+    if (platform_root && *platform_root) {
+        char probe[1024];
+        snprintf(probe, sizeof(probe), "%s/FRM", platform_root);
+        if (dir_exists(probe))
+            return platform_root;
+    }
     const char *env = getenv("ABC_DATA");
     if (env && *env) {
         snprintf(buf, sizeof(buf), "%s", env);
@@ -112,6 +132,9 @@ static const char *pick_addon_root(const char *requested)
         snprintf(buf, sizeof(buf), "%s", requested);
         return buf;
     }
+    const char *platform_root = platform_addon_root_default();
+    if (platform_root && *platform_root && dir_exists(platform_root))
+        return platform_root;
     const char *env = getenv("ABC_ADDON");
     if (env && *env) {
         snprintf(buf, sizeof(buf), "%s", env);
@@ -243,12 +266,18 @@ static int validate(const char *data_root)
     return errors ? 1 : 0;
 }
 
-static SDL_Rect fit_rect(int ww, int wh)
+static SDL_Rect fit_rect(SDL_Window *window)
 {
-    float scale = fminf((float)ww / ABC_W, (float)wh / ABC_H);
+    int ww = ABC_W, wh = ABC_H;
+    SDL_GetWindowSizeInPixels(window, &ww, &wh);
+    SDL_Rect safe = {0, 0, ww, wh};
+    if (!SDL_GetWindowSafeArea(window, &safe) || safe.w <= 0 || safe.h <= 0) {
+        safe = (SDL_Rect){0, 0, ww, wh};
+    }
+    float scale = fminf((float)safe.w / ABC_W, (float)safe.h / ABC_H);
     int w = (int)(ABC_W * scale);
     int h = (int)(ABC_H * scale);
-    SDL_Rect r = {(ww - w) / 2, (wh - h) / 2, w, h};
+    SDL_Rect r = {safe.x + (safe.w - w) / 2, safe.y + (safe.h - h) / 2, w, h};
     return r;
 }
 
@@ -260,6 +289,17 @@ static void map_mouse(const SDL_Rect *dst, float wx, float wy, int *lx, int *ly)
     }
     *lx = (int)((wx - dst->x) * ABC_W / dst->w);
     *ly = (int)((wy - dst->y) * ABC_H / dst->h);
+}
+
+static bool map_touch(SDL_Window *window, const SDL_Rect *dst, float nx, float ny,
+                      int *lx, int *ly)
+{
+    int ww = 0, wh = 0;
+    SDL_GetWindowSizeInPixels(window, &ww, &wh);
+    float wx = nx * (float)ww;
+    float wy = ny * (float)wh;
+    map_mouse(dst, wx, wy, lx, ly);
+    return *lx >= 0 && *ly >= 0 && *lx < ABC_W && *ly < ABC_H;
 }
 
 static bool save_png(SDL_Renderer *r, const char *path)
@@ -278,9 +318,10 @@ static bool save_png(SDL_Renderer *r, const char *path)
 
 static char *screenshot_path(int id, const char *tag)
 {
-    mkdir_p("screenshots");
-    static char path[512];
-    snprintf(path, sizeof(path), "screenshots/%s-%d-%llu.png", tag, id,
+    const char *dir = platform_writable_dir();
+    mkdir_p(dir);
+    static char path[768];
+    snprintf(path, sizeof(path), "%s/%s-%d-%llu.png", dir, tag, id,
              (unsigned long long)SDL_GetTicks());
     return path;
 }
@@ -431,7 +472,151 @@ done:
     return rc;
 }
 
+static bool g_touch_input = false;
+static bool g_hud_enabled = false;
+static bool g_paused = false;
+static bool g_sound_on = true;
+static bool g_music_on = true;
+static uint64_t g_last_back_ms = 0;
+
+static void apply_input_mode(Scene *scene)
+{
+    if (scene)
+        scene_set_touch_mode(scene, g_touch_input);
+}
+
+static void get_hud_layout(HudLayout *layout, SDL_Window *window)
+{
+    int ww = 0, wh = 0;
+    SDL_GetWindowSizeInPixels(window, &ww, &wh);
+    SDL_Rect stage = fit_rect(window);
+    hud_layout(layout, ww, wh, stage, g_paused);
+}
+
+static void app_back(Scene **ps, int *scene_id, int *hist_n, int *history,
+                     bool *running)
+{
+    Scene *s = *ps;
+    if (g_paused) {
+        g_paused = false;
+        if (g_music_on)
+            audio_music_resume();
+        return;
+    }
+    if (!s) {
+        *running = false;
+        return;
+    }
+    if (s->info_overlay) {
+        s->info_overlay = false;
+        return;
+    }
+    if (s->video) {
+        video_close(s->video);
+        s->video = NULL;
+        s->video_stop_music = false;
+        if (g_music_on && g_sound_on)
+            audio_music_resume();
+        return;
+    }
+    if (*hist_n > 0) {
+        int prev = history[--(*hist_n)];
+        scene_free(s);
+        *ps = NULL;
+        *scene_id = prev;
+        return;
+    }
+    uint64_t now = SDL_GetTicks();
+    if (now - g_last_back_ms < 2000) {
+        *running = false;
+    } else {
+        g_last_back_ms = now;
+        scene_toast(s, "NACISNIJ PONOWNIE ABY WYJSC", 1800);
+    }
+}
+
+static void enter_pause(Scene *scene)
+{
+    if (g_paused)
+        return;
+    log_info("pause entered");
+    g_paused = true;
+    if (scene && scene->module == 1)
+        modules_save_train_scroll(scene);
+    audio_music_pause();
+    audio_stop_all();
+    if (scene && scene->video) {
+        video_close(scene->video);
+        scene->video = NULL;
+    }
+}
+
+static void leave_pause(void)
+{
+    if (!g_paused)
+        return;
+    log_info("pause left");
+    g_paused = false;
+    if (g_music_on && g_sound_on)
+        audio_music_resume();
+}
+
+static bool handle_hud_action(HudAction action, Scene **ps, int *scene_id,
+                              int *hist_n, int *history, bool *running)
+{
+    Scene *s = *ps;
+    log_info("hud action %d", (int)action);
+    switch (action) {
+    case HUD_PAUSE:
+        enter_pause(s);
+        return true;
+    case HUD_HOME:
+        if (s) {
+            scene_request(s, 1001);
+            leave_pause();
+        }
+        return true;
+    case HUD_SOUND:
+    case HUD_EFFECTS:
+        g_sound_on = !g_sound_on;
+        audio_enabled = g_sound_on;
+        if (!g_sound_on) {
+            audio_stop_all();
+            audio_music_pause();
+        } else if (!g_paused && g_music_on) {
+            audio_music_resume();
+        }
+        return true;
+    case HUD_BACK:
+        app_back(ps, scene_id, hist_n, history, running);
+        return true;
+    case HUD_RESUME:
+        leave_pause();
+        return true;
+    case HUD_MUSIC:
+        g_music_on = !g_music_on;
+        if (!g_music_on)
+            audio_music_pause();
+        else if (!g_paused && g_sound_on)
+            audio_music_resume();
+        return true;
+    case HUD_MANAGER:
+        enter_pause(s);
+        platform_open_content_manager();
+        return true;
+    case HUD_EXIT:
+        *running = false;
+        return true;
+    default:
+        return false;
+    }
+}
+
+#ifdef __ANDROID__
+int SDL_main(int argc, char **argv)
+#else
 int main(int argc, char **argv)
+#endif
 {
     Options opt;
     if (!parse_args(argc, argv, &opt))
@@ -440,10 +625,18 @@ int main(int argc, char **argv)
     if (opt.validate)
         return validate(opt.data_root);
 
+    if (platform_is_android()) {
+        /* Touch arrives through SDL_EVENT_FINGER_*; disable synthetic mouse
+           events so a tap is not handled twice. */
+        SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
+        SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS, "0");
+    }
+
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_EVENTS)) {
         log_error("SDL_Init: %s", SDL_GetError());
         return 1;
     }
+    SDL_DisableScreenSaver();
 
     int ww = ABC_W * opt.scale, wh = ABC_H * opt.scale;
     SDL_WindowFlags wflags = SDL_WINDOW_RESIZABLE;
@@ -451,13 +644,20 @@ int main(int argc, char **argv)
         wflags |= SDL_WINDOW_HIDDEN;
     if (opt.fullscreen)
         wflags |= SDL_WINDOW_FULLSCREEN;
+    if (platform_is_android()) {
+        wflags = SDL_WINDOW_FULLSCREEN;
+        ww = ABC_W;
+        wh = ABC_H;
+    }
     SDL_Window *window = SDL_CreateWindow("Moje Pierwsze ABC", ww, wh, wflags);
     if (!window) {
         log_error("cannot create window: %s", SDL_GetError());
         return 1;
     }
-    SDL_SetWindowMinimumSize(window, 320, 240);
-    SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+    if (!platform_is_android()) {
+        SDL_SetWindowMinimumSize(window, 320, 240);
+        SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+    }
     SDL_Renderer *renderer = SDL_CreateRenderer(window, NULL);
     if (!renderer) {
         log_error("cannot create renderer: %s", SDL_GetError());
@@ -526,6 +726,10 @@ int main(int argc, char **argv)
     bool running = true;
     int scene_id = opt.start_id;
     Scene *scene = NULL;
+    TouchState touch = {0};
+    g_touch_input = platform_is_android();
+    g_hud_enabled = platform_is_android();
+    g_sound_on = !opt.mute;
     uint64_t last = SDL_GetTicksNS();
 
     while (running) {
@@ -535,6 +739,7 @@ int main(int argc, char **argv)
                 log_error("cannot open scene %d", scene_id);
                 break;
             }
+            apply_input_mode(scene);
         }
 
         SDL_Event ev;
@@ -543,18 +748,166 @@ int main(int argc, char **argv)
             case SDL_EVENT_QUIT:
                 running = false;
                 break;
-            case SDL_EVENT_KEY_DOWN:
-                if (ev.key.key == SDLK_ESCAPE) {
-                    if (scene->info_overlay) {
-                        scene->info_overlay = false;
-                    } else if (hist_n > 0) {
-                        int prev = history[--hist_n];
-                        scene_free(scene);
-                        scene = NULL;
-                        scene_id = prev;
-                    } else {
-                        running = false;
+            case SDL_EVENT_WILL_ENTER_BACKGROUND:
+                enter_pause(scene);
+                break;
+            case SDL_EVENT_DID_ENTER_FOREGROUND:
+                /* Stay on the pause screen; the child resumes explicitly. */
+                break;
+            case SDL_EVENT_TERMINATING:
+                if (scene && scene->module == 1)
+                    modules_save_train_scroll(scene);
+                running = false;
+                break;
+            case SDL_EVENT_LOW_MEMORY:
+                audio_stop_all();
+                break;
+            case SDL_EVENT_RENDER_DEVICE_RESET: {
+                /* Android can lose the GL context while the app is hidden.
+                   SDL textures are no longer valid; rebuild the canvas and
+                   reload the current scene from the disc tree. */
+                if (canvas)
+                    SDL_DestroyTexture(canvas);
+                canvas = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
+                                           SDL_TEXTUREACCESS_TARGET, ABC_W, ABC_H);
+                if (canvas)
+                    SDL_SetTextureScaleMode(canvas, SDL_SCALEMODE_NEAREST);
+                if (scene) {
+                    scene_free(scene);
+                    scene = NULL;
+                }
+                break;
+            }
+            case SDL_EVENT_FINGER_DOWN: {
+                if (touch.active || !scene)
+                    break;
+                int wwp = 0, whp = 0;
+                SDL_GetWindowSizeInPixels(window, &wwp, &whp);
+                float wxp = ev.tfinger.x * (float)wwp;
+                float wyp = ev.tfinger.y * (float)whp;
+                if (g_hud_enabled) {
+                    HudLayout hl;
+                    get_hud_layout(&hl, window);
+                    HudAction ha = hud_hit(&hl, wxp, wyp);
+                    if (ha != HUD_NONE) {
+                        handle_hud_action(ha, &scene, &scene_id, &hist_n, history, &running);
+                        touch.active = true;
+                        touch.finger = ev.tfinger.fingerID;
+                        touch.hud = true;
+                        break;
                     }
+                    if (g_paused) {
+                        touch.active = true;
+                        touch.finger = ev.tfinger.fingerID;
+                        touch.hud = true;
+                        break;
+                    }
+                }
+                SDL_Rect dst = fit_rect(window);
+                int lx = -1, ly = -1;
+                if (!map_touch(window, &dst, ev.tfinger.x, ev.tfinger.y, &lx, &ly))
+                    break;
+                touch.active = true;
+                touch.finger = ev.tfinger.fingerID;
+                log_info("touch down %d,%d", lx, ly);
+                touch.lx = lx;
+                touch.ly = ly;
+                int ww = 0, wh = 0;
+                SDL_GetWindowSizeInPixels(window, &ww, &wh);
+                touch.down_x = ev.tfinger.x * (float)ww;
+                touch.down_y = ev.tfinger.y * (float)wh;
+                touch.dragged = false;
+                touch.reveal_only = false;
+                touch.train_gesture = false;
+                touch.hud = false;
+                g_touch_input = true;
+                scene_set_touch_mode(scene, true);
+                if (scene->module == 2) {
+                    /* Reveal-first: the first tap on a hidden object only
+                       reveals it; the next tap opens the word. */
+                    touch.reveal_only = scene_touch_reveal(scene, lx, ly);
+                }
+                if (!touch.reveal_only) {
+                    scene->mouse_x = lx;
+                    scene->mouse_y = ly;
+                    scene_mouse_down(scene, lx, ly);
+                    touch.train_gesture = modules_train_touch_down(scene, lx, ly);
+                    if (scene->module == 14)
+                        scene_set_maze_target(scene, lx, ly);
+                }
+                break;
+            }
+            case SDL_EVENT_FINGER_MOTION: {
+                if (!touch.active || ev.tfinger.fingerID != touch.finger || !scene)
+                    break;
+                if (touch.hud || g_paused || touch.reveal_only)
+                    break;
+                SDL_Rect dst = fit_rect(window);
+                int lx = -1, ly = -1;
+                if (!map_touch(window, &dst, ev.tfinger.x, ev.tfinger.y, &lx, &ly))
+                    break;
+                int ww = 0, wh = 0;
+                SDL_GetWindowSizeInPixels(window, &ww, &wh);
+                float wx = ev.tfinger.x * (float)ww;
+                float wy = ev.tfinger.y * (float)wh;
+                float dx = wx - touch.down_x;
+                float dy = wy - touch.down_y;
+                if (dx * dx + dy * dy > 12.0f * 12.0f)
+                    touch.dragged = true;
+                touch.lx = lx;
+                touch.ly = ly;
+                scene->mouse_x = lx;
+                scene->mouse_y = ly;
+                if (touch.train_gesture)
+                    modules_train_touch_move(scene, lx, ly);
+                if (scene->module == 14)
+                    scene_set_maze_target(scene, lx, ly);
+                break;
+            }
+            case SDL_EVENT_FINGER_UP:
+            case SDL_EVENT_FINGER_CANCELED: {
+                if (!touch.active || ev.tfinger.fingerID != touch.finger || !scene)
+                    break;
+                if (touch.hud) {
+                    touch.hud = false;
+                    touch.active = false;
+                    break;
+                }
+                if (g_paused) {
+                    touch.active = false;
+                    break;
+                }
+                int lx = touch.lx, ly = touch.ly;
+                log_info("touch up %d,%d dragged=%d reveal=%d train=%d", lx, ly,
+                         (int)touch.dragged, (int)touch.reveal_only, (int)touch.train_gesture);
+                if (!touch.reveal_only && !touch.dragged) {
+                    if (touch.train_gesture) {
+                        modules_train_touch_up(scene, lx, ly);
+                        scene_mouse_up(scene, lx, ly);
+                    } else {
+                        scene_click(scene, lx, ly);
+                        scene_mouse_up(scene, lx, ly);
+                    }
+                } else {
+                    if (touch.train_gesture) {
+                        modules_train_touch_up(scene, lx, ly);
+                        scene_mouse_up(scene, lx, ly);
+                    } else {
+                        scene_mouse_up(scene, lx, ly);
+                    }
+                }
+                /* Finger lifted: there is no hover pointer any more.  Keep
+                   an explicit preview frame alive through touch_preview_until. */
+                scene->mouse_x = -1;
+                scene->mouse_y = -1;
+                touch.active = false;
+                touch.reveal_only = false;
+                touch.train_gesture = false;
+                break;
+            }
+            case SDL_EVENT_KEY_DOWN:
+                if (ev.key.key == SDLK_ESCAPE || ev.key.key == SDLK_AC_BACK) {
+                    app_back(&scene, &scene_id, &hist_n, history, &running);
                 } else if (ev.key.key == SDLK_F11) {
                     bool fs = (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0;
                     SDL_SetWindowFullscreen(window, !fs);
@@ -570,9 +923,11 @@ int main(int argc, char **argv)
                 break;
             case SDL_EVENT_MOUSE_MOTION: {
                 int x, y;
-                int ww2, wh2;
-                SDL_GetWindowSizeInPixels(window, &ww2, &wh2);
-                SDL_Rect dst = fit_rect(ww2, wh2);
+                if (g_paused)
+                    break;
+                g_touch_input = false;
+                scene_set_touch_mode(scene, false);
+                SDL_Rect dst = fit_rect(window);
                 map_mouse(&dst, ev.motion.x, ev.motion.y, &x, &y);
                 scene->mouse_x = x;
                 scene->mouse_y = y;
@@ -580,10 +935,19 @@ int main(int argc, char **argv)
             }
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
                 if (ev.button.button == SDL_BUTTON_LEFT) {
+                    if (g_hud_enabled) {
+                        HudLayout hl;
+                        get_hud_layout(&hl, window);
+                        HudAction ha = hud_hit(&hl, ev.button.x, ev.button.y);
+                        if (ha != HUD_NONE) {
+                            handle_hud_action(ha, &scene, &scene_id, &hist_n, history, &running);
+                            break;
+                        }
+                        if (g_paused)
+                            break;
+                    }
                     int x, y;
-                    int ww2, wh2;
-                    SDL_GetWindowSizeInPixels(window, &ww2, &wh2);
-                    SDL_Rect dst = fit_rect(ww2, wh2);
+                    SDL_Rect dst = fit_rect(window);
                     map_mouse(&dst, ev.button.x, ev.button.y, &x, &y);
                     scene->mouse_x = x;
                     scene->mouse_y = y;
@@ -592,11 +956,9 @@ int main(int argc, char **argv)
                 }
                 break;
             case SDL_EVENT_MOUSE_BUTTON_UP:
-                if (ev.button.button == SDL_BUTTON_LEFT) {
+                if (ev.button.button == SDL_BUTTON_LEFT && !g_paused) {
                     int x, y;
-                    int ww2, wh2;
-                    SDL_GetWindowSizeInPixels(window, &ww2, &wh2);
-                    SDL_Rect dst = fit_rect(ww2, wh2);
+                    SDL_Rect dst = fit_rect(window);
                     map_mouse(&dst, ev.button.x, ev.button.y, &x, &y);
                     scene_mouse_up(scene, x, y);
                 }
@@ -618,7 +980,12 @@ int main(int argc, char **argv)
         if (dt > 0.1f)
             dt = 0.1f;
 
-        scene_update(scene, dt);
+        if (platform_audio_focus_lost()) {
+            platform_clear_audio_focus_lost();
+            enter_pause(scene);
+        }
+        if (!g_paused)
+            scene_update(scene, dt);
         audio_tick();
 
         /* Draw to the logical 640x480 canvas. */
@@ -630,9 +997,10 @@ int main(int argc, char **argv)
         if (scene->print_requested) {
             char *out = screenshot_path(scene->id, "print");
             bool ok = save_png(renderer, out);
-            if (ok)
+            if (ok) {
+                platform_share_file(out);
                 scene_toast(scene, "ZAPISANO OBRAZ DO PLIKU PNG", 2200);
-            else
+            } else
                 scene_toast(scene, "NIE UDALO SIE ZAPISAC OBRAZU", 2200);
             scene->print_requested = false;
         }
@@ -641,11 +1009,16 @@ int main(int argc, char **argv)
         SDL_SetRenderTarget(renderer, NULL);
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
-        int ww2, wh2;
-        SDL_GetWindowSizeInPixels(window, &ww2, &wh2);
-        SDL_Rect dst = fit_rect(ww2, wh2);
+        SDL_Rect dst = fit_rect(window);
         SDL_RenderTexture(renderer, canvas, NULL, &(SDL_FRect){(float)dst.x, (float)dst.y,
                                                                (float)dst.w, (float)dst.h});
+        if (g_hud_enabled) {
+            HudLayout hl;
+            get_hud_layout(&hl, window);
+            char title[48];
+            snprintf(title, sizeof(title), "SCENA %d", scene ? scene->id : 0);
+            hud_draw(renderer, &hl, g_paused, g_sound_on, g_music_on, title);
+        }
         SDL_RenderPresent(renderer);
 
         if (scene->request_pending) {

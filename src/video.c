@@ -230,9 +230,13 @@ VideoPlayer *video_open(SDL_Renderer *renderer, const char *path)
 {
 #ifdef HAVE_FFMPEG
     AVFormatContext *fmt = NULL;
-    if (avformat_open_input(&fmt, path, NULL, NULL) < 0)
+    int open_ret = avformat_open_input(&fmt, path, NULL, NULL);
+    if (open_ret < 0) {
+        log_warn("video: cannot open %s (%d)", path, open_ret);
         return NULL;
+    }
     if (avformat_find_stream_info(fmt, NULL) < 0) {
+        log_warn("video: cannot find streams in %s", path);
         avformat_close_input(&fmt);
         return NULL;
     }
@@ -308,8 +312,11 @@ VideoPlayer *video_open(SDL_Renderer *renderer, const char *path)
     v->audio = decode_audio(fmt);
     v->has_audio = v->audio != NULL;
     /* Audio decoding consumed the file; rewind for video. */
-    if (avformat_seek_file(fmt, -1, 0, 0, 0, 0) < 0)
-        av_seek_frame(fmt, -1, 0, AVSEEK_FLAG_BACKWARD);
+    int seek_ret = avformat_seek_file(fmt, -1, 0, 0, 0, 0);
+    if (seek_ret < 0)
+        seek_ret = av_seek_frame(fmt, -1, 0, AVSEEK_FLAG_BACKWARD);
+    if (seek_ret < 0)
+        log_warn("video: cannot rewind %s (%d)", path, seek_ret);
     avcodec_flush_buffers(vctx);
 
     v->tex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888,
@@ -320,6 +327,7 @@ VideoPlayer *video_open(SDL_Renderer *renderer, const char *path)
     }
     SDL_SetTextureScaleMode(v->tex, SDL_SCALEMODE_LINEAR);
     if (!decode_next(v)) {
+        log_warn("video: cannot decode first frame of %s", path);
         video_close(v);
         return NULL;
     }
@@ -345,6 +353,7 @@ bool video_tick(VideoPlayer *v, uint64_t now_ms)
     if (now_ms < v->next_ms)
         return true;
     if (!decode_next(v)) {
+        log_info("video: end/failed at %.0f ms", v->frame_pts_ms);
         v->finished = true;
         return false;
     }

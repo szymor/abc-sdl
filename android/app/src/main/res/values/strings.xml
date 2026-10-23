@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Moje Pierwsze ABC</string>
+
+    <string name="setup_title">Moje Pierwsze ABC</string>
+    <string name="setup_intro">Ta aplikacja nie zawiera danych gry. Wybierz folder wyodrębniony z własnej płyty CD (folder „abc” z katalogami FRM, WAV, AVI i MIDI).</string>
+    <string name="setup_pick_data">Wybierz folder danych</string>
+    <string name="setup_pick_addon">Wybierz folder dodatków</string>
+    <string name="setup_import">Importuj</string>
+    <string name="setup_play">Graj</string>
+    <string name="setup_change">Zmień dane</string>
+    <string name="setup_remove">Usuń dane z urządzenia</string>
+    <string name="setup_cancel">Anuluj</string>
+    <string name="setup_ready">Dane są gotowe.</string>
+    <string name="setup_no_selection">Najpierw wybierz folder z danymi gry.</string>
+    <string name="setup_importing">Importowanie…</string>
+    <string name="setup_import_done">Import zakończony.</string>
+    <string name="setup_import_failed">Nie udało się zaimportować danych.</string>
+    <string name="setup_space_warning">Za mało miejsca. Potrzeba około 650 MB wolnego miejsca.</string>
+    <string name="setup_help_title">Jak przygotować dane?</string>
+    <string name="setup_help_text">Na komputerze wyodrębnij płytę CD narzędziem tools/extract_mdf.sh. Skopiuj folder „abc” na telefon, a następnie wskaż go tutaj. Folder powinien zawierać podkatalogi FRM, WAV, AVI i MIDI. Muzyka MIDI jest odtwarzana z plików OGG w folderze dodatków.</string>
+    <string name="setup_manage_title">Dane gry</string>
+    <string name="setup_manage_intro">Dane gry są już zaimportowane. Możesz uruchomić grę, zmienić folder danych albo zaimportować dodatki.</string>
+    <string name="setup_manage_text">Dane są już zaimportowane. Możesz uruchomić grę, zmienić folder danych lub zaimportować dodatki.</string>
+</resources>
