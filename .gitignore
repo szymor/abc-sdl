@@ -23,3 +23,14 @@ tests/out/
 
 # Local data link (the original CD tree lives in abc-re/abc)
 data/
+
+# Android build inputs/outputs
+android/.gradle/
+android/local.properties
+android/app/.cxx/
+android/app/libs/*.aar
+*.apk
+*.aab
+
+# FFmpeg is built by tools/ndk-build-ffmpeg.sh
+third_party/ffmpeg/

@@ -1138,6 +1138,15 @@ Scene *scene_load(SDL_Renderer *r, const char *data_root, const char *addon_root
         if (help && help->wav_click)
             audio_play(help->wav_click, 1.0f);
     }
+    if (getenv("ABC_DEBUG")) {
+        for (int i = 0; i < s->ncomps; i++) {
+            Comp *c = &s->comps[i];
+            log_info("  comp %-12s cls=%d rect=%d,%d %dx%d vis=%d "
+                     "normal=%d abnormal=%d special=%d",
+                     c->name, (int)c->cls, c->left, c->top, c->width, c->height,
+                     (int)c->visible, c->normal, c->abnormal, c->special);
+        }
+    }
     free(data);
     log_info("scene %d loaded (%d components)", id, s->ncomps);
     return s;
@@ -1438,6 +1447,84 @@ void scene_set_player(Scene *s, int x, int y)
     s->player_init = true;
 }
 
+void scene_set_touch_mode(Scene *s, bool touch)
+{
+    s->touch_mode = touch;
+}
+
+void scene_set_maze_target(Scene *s, int x, int y)
+{
+    s->maze_target_x = x;
+    s->maze_target_y = y;
+    s->maze_target_active = true;
+}
+
+/* Nearest interactive component within `slop` logical pixels.  Exact hits win
+   in z-order; otherwise the nearest centre is used.  This is what makes small
+   swatches, media buttons and Szczegoly ellipses usable with a fingertip. */
+int scene_hit_touch_index(Scene *s, int x, int y, int slop)
+{
+    for (int i = s->ncomps - 1; i >= 0; i--) {
+        Comp *c = &s->comps[i];
+        if (!is_interactive(c) || !c->visible)
+            continue;
+        if (s->module == 13 && c->found && c->name[0] &&
+            (c->name[0] == 'x' || c->name[0] == 'y') && isdigit((unsigned char)c->name[1]))
+            continue;
+        if (comp_contains(s, c, x, y))
+            return i;
+    }
+    int best = -1;
+    float best_dist = 1e9f;
+    for (int i = s->ncomps - 1; i >= 0; i--) {
+        Comp *c = &s->comps[i];
+        if (!is_interactive(c) || !c->visible)
+            continue;
+        if (s->module == 13 && c->found && c->name[0] &&
+            (c->name[0] == 'x' || c->name[0] == 'y') && isdigit((unsigned char)c->name[1]))
+            continue;
+        SDL_FRect r;
+        comp_rect(s, c, &r);
+        float dx = 0.0f, dy = 0.0f;
+        if ((float)x < r.x) dx = r.x - (float)x;
+        else if ((float)x > r.x + r.w) dx = (float)x - (r.x + r.w);
+        if ((float)y < r.y) dy = r.y - (float)y;
+        else if ((float)y > r.y + r.h) dy = (float)y - (r.y + r.h);
+        float edge = sqrtf(dx * dx + dy * dy);
+        if (edge > (float)slop)
+            continue;
+        float cx = r.x + r.w * 0.5f;
+        float cy = r.y + r.h * 0.5f;
+        float dist = hypotf((float)x - cx, (float)y - cy);
+        if (edge == 0.0f)
+            dist = 0.0f;
+        if (dist < best_dist) {
+            best_dist = dist;
+            best = i;
+        }
+    }
+    return best;
+}
+
+/* Touch has no hover phase.  The first tap on a hidden letter-playground
+   object reveals it (and plays its voice); a second tap opens the word. */
+bool scene_touch_reveal(Scene *s, int x, int y)
+{
+    if (s->module != 2)
+        return false;
+    int idx = scene_hit_touch_index(s, x, y, 14);
+    if (idx < 0)
+        return false;
+    Comp *c = &s->comps[idx];
+    if (c->state != ST_NORMAL || comp_frame_selector(c) >= 0)
+        return false;
+    comp_play_click(s, c);
+    c->state = ST_ABNORMAL;
+    c->touch_preview_until = s->now + 5000;
+    play_state_wave(s, c, ST_ABNORMAL);
+    return true;
+}
+
 void scene_mouse_down(Scene *s, int x, int y)
 {
     s->mouse_down = true;
@@ -1495,7 +1582,10 @@ static void hover_update(Scene *s)
         Comp *c = &s->comps[i];
         if (c->hover_lock)
             continue;
-        bool over = (i == hit);
+        bool hold = s->touch_mode && c->touch_preview_until > s->now;
+        bool over = (i == hit) || hold;
+        if (!over && c->touch_preview_until && c->touch_preview_until <= s->now)
+            c->touch_preview_until = 0;
         if (over && c->move_to_abnormal && c->state == ST_NORMAL)
             comp_set_state(s, c, ST_ABNORMAL);
         else if (!over && c->move_to_normal && c->state == ST_ABNORMAL)
@@ -1509,6 +1599,10 @@ static void hover_wave_update(Scene *s)
         Comp *c = &s->comps[i];
         if (!c->hover_wave_pending)
             continue;
+        if (s->touch_mode) {
+            c->hover_wave_pending = false;
+            continue;
+        }
         if (c->state != ST_ABNORMAL) {
             c->hover_wave_pending = false;
             continue;
@@ -1598,6 +1692,8 @@ void scene_update(Scene *s, float dt)
             if (c->cls != CC_WYSUN)
                 continue;
             bool over = comp_contains(s, c, s->mouse_x, s->mouse_y);
+            if (s->touch_mode)
+                over = true; /* crayons are always raised for touch */
             float target = over ? 0.0f : (float)c->slide_max;
             float step = (float)c->slide_speed * 100.0f * dt;
             if (step < 1.0f)
@@ -1821,7 +1917,12 @@ bool scene_click(Scene *s, int x, int y)
         release_media_buttons(s);
         return true;
     }
-    Comp *hit = scene_hit(s, x, y);
+    Comp *hit = s->touch_mode ? NULL : scene_hit(s, x, y);
+    if (s->touch_mode) {
+        int ti = scene_hit_touch_index(s, x, y, 14);
+        if (ti >= 0)
+            hit = &s->comps[ti];
+    }
     if (getenv("ABC_DEBUG"))
         fprintf(stderr, "scene click %d,%d -> %s\n", x, y, hit ? hit->name : "-");
     if (modules_click(s, x, y, hit))
@@ -1834,8 +1935,15 @@ bool scene_click(Scene *s, int x, int y)
     if (s->module == 2 && hit->state == ST_NORMAL && comp_frame_selector(hit) < 0) {
         comp_play_click(s, hit);
         hit->state = ST_ABNORMAL;
+        hit->touch_preview_until = s->now + 5000;
         play_state_wave(s, hit, ST_ABNORMAL);
         return true;
+    }
+
+    if (s->touch_mode && hit->hover_only) {
+        hit->touch_preview_until = s->now + 2500;
+        if (hit->state == ST_NORMAL)
+            comp_set_state(s, hit, ST_ABNORMAL);
     }
 
     comp_play_click(s, hit);

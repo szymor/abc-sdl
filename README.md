@@ -34,6 +34,7 @@ The reverse-engineering specification this port is based on lives in
 | Video (AVI) | complete — Cinepak/MSVideo1/Indeo3 decoded by FFmpeg into the `TEkran` rect, with audio |
 | Cursors (`PEDZEL`, `LIT_*`) | brush cursor extracted from `ABC.EXE`; the maze draws the word's letter as a sprite (the `LIT_*` resources are available in `src/cursors_data.h`) |
 | Printing | exports a PNG instead of GDI printing |
+| Android | Gradle/NDK port with first-run CD-data import, touch controls, HUD, OGG music and decode-only FFmpeg |
 
 Every scene was loaded and drawn in a headless pass (`--script` over all 294
 IDs) without errors. Every game module was driven to completion by scripted
@@ -106,6 +107,23 @@ Default start scene is `100` (splash). Useful options:
 --script FILE     replay a click script (see Testing)
 ```
 
+### Android
+
+The Android app contains **no original game data**.  On first launch it asks
+for the extracted `abc/` folder, copies it into app-private storage, and then
+runs the same native engine.  The small `addon/` tree (IGLO artwork/WAV and the
+rendered MIDI OGGs) is bundled and merged in.
+
+```bash
+tools/fetch_android_deps.sh
+NDK=$ANDROID_HOME/ndk/28.2.13676358 tools/ndk-build-ffmpeg.sh
+cd android && ./gradlew assembleDebug
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+See [`docs/ANDROID.md`](docs/ANDROID.md) for the content importer, developer
+shortcut (`adb push`), debug start scenes, touch controls and licensing notes.
+
 ### Controls
 
 | input | action |
@@ -143,6 +161,10 @@ src/audio.c     WAV cache/one-shots, MIDI playlists (FluidSynth)
 src/video.c     AVI demux/decode (FFmpeg), frame timing, audio extraction
 src/font.c      tiny 5×7 bitmap font for placeholders and toasts
 src/util.c      file loading, case-insensitive Windows path resolution
+src/platform/   Android/desktop paths, content roots, audio-focus bridge
+src/ui/hud.c    Android system HUD and pause/settings menu
+android/        Gradle project, content importer, Java activity/bridge
+tools/          cursor extraction, MIDI→OGG, Android deps/FFmpeg builds
 ```
 
 The engine mirrors the original's component semantics:

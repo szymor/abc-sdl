@@ -11,6 +11,10 @@
 
 static Comp *train_comp(Scene *s);
 static int g_train_scroll;
+static bool g_train_touch_active;
+static bool g_train_touch_dragging;
+static int g_train_touch_start_x;
+static int g_train_touch_start_scroll;
 
 /* Polish titles transliterated to ASCII for the debug font. */
 static const char *word_titles[136] = {
@@ -362,6 +366,28 @@ static void reset_game(Scene *s)
     }
 }
 
+/* Prefer a pre-rendered addon MIDI OGG over the disc's .MID file.  This
+   lets Android (and desktop without FluidSynth) play the soundtrack through
+   SDL_mixer while keeping the original data untouched. */
+static char *resolve_music(Scene *s, const char *win_path)
+{
+    if (win_path && str_iends(win_path, ".mid")) {
+        char alt[600];
+        snprintf(alt, sizeof(alt), "%s", win_path);
+        size_t n = strlen(alt);
+        if (n >= 4) {
+            alt[n - 3] = 'o';
+            alt[n - 2] = 'g';
+            alt[n - 1] = 'g';
+        }
+        char *p = resolve_asset(s->addon_root, alt);
+        if (path_exists(p))
+            return p;
+        free(p);
+    }
+    return scene_resolve_asset(s, win_path);
+}
+
 void modules_setup(Scene *s, const char *data_root)
 {
     (void)data_root;
@@ -381,7 +407,7 @@ void modules_setup(Scene *s, const char *data_root)
             const char *f = dfm_str(midi->src, key, NULL);
             if (!f || !*f)
                 continue;
-            char *p = scene_resolve_asset(s, f);
+            char *p = resolve_music(s, f);
             snprintf(s->music_paths[s->nmusic], sizeof(s->music_paths[0]), "%s", p);
             free(p);
             s->nmusic++;
@@ -701,6 +727,7 @@ static bool puzzle_place(Scene *s, int piece_idx, Comp *slot)
     Comp *piece = find_num(s, 'k', piece_idx);
     if (!piece || !slot || piece->placed)
         return false;
+    log_info("puzzle place k%02d -> %s", piece_idx, slot->name);
     int slot_idx = comp_num(slot, 'p');
     if (slot_idx != piece_idx)
         return false;
@@ -738,6 +765,8 @@ static void revert_piece_to_tray(Scene *s, Comp *piece)
 
 static bool puzzle_click(Scene *s, int x, int y, Comp *hit)
 {
+    log_info("puzzle click %d,%d hit=%s selected=%d", x, y, hit ? hit->name : "-",
+             s->selected_idx);
     if (hit && comp_num(hit, 'k') > 0 && hit->tex && !hit->placed) {
         select_puzzle_piece(s, comp_num(hit, 'k'));
         comp_play_click(s, hit);
@@ -1264,6 +1293,10 @@ static void maze_update(Scene *s, float dt)
     if (!maze || !s->player_init || s->complete)
         return;
     int tx = s->mouse_x, ty = s->mouse_y;
+    if (s->touch_mode && s->maze_target_active) {
+        tx = s->maze_target_x;
+        ty = s->maze_target_y;
+    }
     int mx0 = s->origin_x + maze->left, my0 = s->origin_y + maze->top;
     bool pointer_in_maze = tx >= mx0 && ty >= my0 &&
                            tx < mx0 + maze->col_w && ty < my0 + maze->col_h;
@@ -1343,6 +1376,8 @@ static Comp *train_comp(Scene *s)
     return NULL;
 }
 
+static bool train_click(Scene *s, int x, int y, Comp *hit);
+
 static void train_update(Scene *s, float dt)
 {
     Comp *train = train_comp(s);
@@ -1351,6 +1386,13 @@ static void train_update(Scene *s, float dt)
     int max_scroll = train->tex_w - train->width;
     if (max_scroll < 0)
         max_scroll = 0;
+    if (s->touch_mode) {
+        /* Touch scrolling is driven by modules_train_touch_*(). */
+        if (s->scroll < 0) s->scroll = 0;
+        if (s->scroll > max_scroll) s->scroll = max_scroll;
+        g_train_scroll = s->scroll;
+        return;
+    }
     bool in_strip = s->mouse_y >= s->origin_y + train->top &&
                     s->mouse_y < s->origin_y + train->top + train->height;
     float speed = 320.0f;
@@ -1367,6 +1409,63 @@ void modules_save_train_scroll(Scene *s)
 {
     if (s && s->module == 1)
         g_train_scroll = s->scroll;
+}
+
+static bool train_strip_contains(Scene *s, Comp *train, int x, int y)
+{
+    return train && y >= s->origin_y + train->top &&
+           y < s->origin_y + train->top + train->height &&
+           x >= s->origin_x + train->left &&
+           x < s->origin_x + train->left + train->width;
+}
+
+bool modules_train_touch_down(Scene *s, int x, int y)
+{
+    if (!s || s->module != 1)
+        return false;
+    Comp *train = train_comp(s);
+    if (!train_strip_contains(s, train, x, y))
+        return false;
+    g_train_touch_active = true;
+    g_train_touch_dragging = false;
+    g_train_touch_start_x = x;
+    g_train_touch_start_scroll = s->scroll;
+    return true;
+}
+
+void modules_train_touch_move(Scene *s, int x, int y)
+{
+    if (!s || !g_train_touch_active || s->module != 1)
+        return;
+    Comp *train = train_comp(s);
+    if (!train)
+        return;
+    int dx = x - g_train_touch_start_x;
+    if (abs(dx) > 8)
+        g_train_touch_dragging = true;
+    int max_scroll = train->tex_w - train->width;
+    if (max_scroll < 0)
+        max_scroll = 0;
+    int want = g_train_touch_start_scroll - dx;
+    if (want < 0) want = 0;
+    if (want > max_scroll) want = max_scroll;
+    s->scroll = want;
+    g_train_scroll = s->scroll;
+}
+
+bool modules_train_touch_up(Scene *s, int x, int y)
+{
+    if (!s || !g_train_touch_active || s->module != 1)
+        return false;
+    bool tap = !g_train_touch_dragging;
+    g_train_touch_active = false;
+    g_train_touch_dragging = false;
+    if (tap) {
+        Comp *train = train_comp(s);
+        if (train_strip_contains(s, train, x, y))
+            return train_click(s, x, y, NULL);
+    }
+    return true;
 }
 
 static bool train_click(Scene *s, int x, int y, Comp *hit)
@@ -1750,6 +1849,17 @@ void modules_render_overlay(Scene *s)
                 }
                 outline_ellipse(r, rc, cr, cg, cb, 3);
             }
+        }
+        break;
+    case 14:
+        if (s->touch_mode && s->maze_target_active) {
+            int x = s->maze_target_x;
+            int y = s->maze_target_y;
+            SDL_Rect rc = {x - 14, y - 14, 28, 28};
+            outline_ellipse(r, rc, 255, 255, 255, 2);
+            SDL_SetRenderDrawColor(r, 255, 230, 60, 220);
+            SDL_FRect dot = {(float)x - 3, (float)y - 3, 6, 6};
+            SDL_RenderFillRect(r, &dot);
         }
         break;
     default:

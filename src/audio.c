@@ -27,11 +27,31 @@ static int cache_count = 0, cache_cap = 0;
 
 static char *music_sig = NULL;
 static bool music_paused = false;
+static MIX_Track *music_file_track = NULL;
+static bool music_file_mode = false;
+static bool music_file_started = false;
+static int music_file_volume = 55;
+
+static bool music_file_start_index(int idx);
+static void music_file_stop(void);
+static void music_file_start_next(void);
 #define MUSIC_MAX_TRACKS 16
 static char *music_paths[MUSIC_MAX_TRACKS];
 static int music_count = 0;
 static int music_current = -1;
 static bool music_random_loop = false;
+
+static int music_next_index(void)
+{
+    if (music_count <= 0)
+        return -1;
+    if (!music_random_loop)
+        return (music_current + 1) % music_count;
+    int idx = rand() % music_count;
+    if (music_count > 1 && idx == music_current)
+        idx = (idx + 1 + rand() % (music_count - 1)) % music_count;
+    return idx;
+}
 
 #ifdef HAVE_FLUIDSYNTH
 static int music_pause_tick = 0;
@@ -125,18 +145,6 @@ static bool synth_init(void)
     return true;
 }
 
-static int music_next_index(void)
-{
-    if (music_count <= 0)
-        return -1;
-    if (!music_random_loop)
-        return (music_current + 1) % music_count;
-    int idx = rand() % music_count;
-    if (music_count > 1 && idx == music_current)
-        idx = (idx + 1 + rand() % (music_count - 1)) % music_count;
-    return idx;
-}
-
 static bool music_start_index(int idx)
 {
     if (!fs_ok || !fs_synth || idx < 0 || idx >= music_count)
@@ -218,6 +226,9 @@ bool audio_init(void)
     }
     for (int i = 0; i < AUDIO_TRACKS; i++)
         tracks[i] = MIX_CreateTrack(mixer);
+    music_file_track = MIX_CreateTrack(mixer);
+    if (music_file_track)
+        MIX_SetTrackGain(music_file_track, 0.55f);
     audio_enabled = true;
     srand((unsigned)SDL_GetTicks());
 #ifdef HAVE_FLUIDSYNTH
@@ -244,6 +255,9 @@ void audio_shutdown(void)
         for (int i = 0; i < AUDIO_TRACKS; i++)
             if (tracks[i])
                 MIX_DestroyTrack(tracks[i]);
+        if (music_file_track)
+            MIX_DestroyTrack(music_file_track);
+        music_file_track = NULL;
         MIX_DestroyMixer(mixer);
         mixer = NULL;
     }
@@ -301,7 +315,7 @@ void audio_free_mem(MIX_Audio *a)
 
 void audio_play(MIX_Audio *a, float gain)
 {
-    if (!audio_enabled || !a)
+    if (!audio_enabled || !mixer || !a)
         return;
     if (video_active) {
         if (getenv("ABC_DEBUG"))
@@ -317,6 +331,8 @@ void audio_play(MIX_Audio *a, float gain)
     audio_stop_all();
     int pick = next_track;
     next_track = (next_track + 1) % AUDIO_TRACKS;
+    if (!tracks[pick])
+        return;
     if (getenv("ABC_DEBUG")) {
         SDL_AudioSpec spec;
         double dur = -1.0;
@@ -331,7 +347,7 @@ void audio_play(MIX_Audio *a, float gain)
 
 void audio_play_sfx(MIX_Audio *a, float gain)
 {
-    if (!audio_enabled || !a)
+    if (!audio_enabled || !mixer || !a)
         return;
     if (video_active) {
         if (getenv("ABC_DEBUG"))
@@ -353,6 +369,8 @@ void audio_play_sfx(MIX_Audio *a, float gain)
     if (pick < 0)
         pick = next_track;
     next_track = (pick + 1) % AUDIO_TRACKS;
+    if (!tracks[pick])
+        return;
     if (getenv("ABC_DEBUG"))
         log_info("audio sfx (overlaps speech)");
     MIX_SetTrackGain(tracks[pick], gain);
@@ -362,7 +380,7 @@ void audio_play_sfx(MIX_Audio *a, float gain)
 
 void audio_play_video(MIX_Audio *a, float gain)
 {
-    if (!audio_enabled)
+    if (!audio_enabled || !mixer)
         return;
     if (gain <= 0.0f)
         gain = 1.0f;
@@ -414,6 +432,13 @@ void audio_stop_all(void)
 
 void audio_tick(void)
 {
+    if (music_file_mode) {
+        if (music_file_started && !music_paused && !video_active && music_file_track &&
+            MIX_GetTrackRemaining(music_file_track) <= 0) {
+            music_file_start_next();
+        }
+        return;
+    }
 #ifdef HAVE_FLUIDSYNTH
     if (music_paused || video_active || music_count <= 0 || !fs_player)
         return;
@@ -424,6 +449,10 @@ void audio_tick(void)
 
 void audio_music_stop(void)
 {
+    if (music_file_mode) {
+        music_file_stop();
+        music_file_mode = false;
+    }
 #ifdef HAVE_FLUIDSYNTH
     if (fs_player) {
         fluid_player_stop(fs_player);
@@ -444,6 +473,14 @@ void audio_music_stop(void)
 
 void audio_music_pause(void)
 {
+    if (music_file_mode) {
+        if (music_file_started && !music_paused) {
+            MIX_PauseTrack(music_file_track);
+            music_paused = true;
+            log_info("music paused (file)");
+        }
+        return;
+    }
 #ifdef HAVE_FLUIDSYNTH
     if (!fs_player || music_paused)
         return;
@@ -466,6 +503,16 @@ bool audio_music_resume(void)
 {
     if (video_active)
         return false;
+    if (music_file_mode) {
+        if (!music_paused || !music_file_started) {
+            music_paused = false;
+            return false;
+        }
+        MIX_ResumeTrack(music_file_track);
+        music_paused = false;
+        log_info("music resumed (file)");
+        return true;
+    }
 #ifdef HAVE_FLUIDSYNTH
     if (!music_paused || !fs_player) {
         music_paused = false;
@@ -495,6 +542,49 @@ const char *audio_music_signature(void)
     return music_sig;
 }
 
+static bool music_path_is_file(const char *path)
+{
+    return path && (str_iends(path, ".ogg") || str_iends(path, ".wav") ||
+                    str_iends(path, ".mp3") || str_iends(path, ".flac"));
+}
+
+static bool music_file_start_index(int idx)
+{
+    if (!audio_enabled || !music_file_track || idx < 0 || idx >= music_count)
+        return false;
+    if (music_file_started)
+        MIX_StopTrack(music_file_track, 0);
+    MIX_Audio *audio = audio_load_file(music_paths[idx]);
+    if (!audio)
+        return false;
+    if (!MIX_SetTrackAudio(music_file_track, audio))
+        return false;
+    MIX_SetTrackGain(music_file_track, (float)music_file_volume / 100.0f);
+    if (!MIX_PlayTrack(music_file_track, 0))
+        return false;
+    music_current = idx;
+    music_file_started = true;
+    log_info("music track: %s", music_paths[idx]);
+    return true;
+}
+
+static void music_file_stop(void)
+{
+    if (music_file_track) {
+        if (music_file_started)
+            MIX_StopTrack(music_file_track, 0);
+        MIX_SetTrackAudio(music_file_track, NULL);
+    }
+    music_file_started = false;
+}
+
+static void music_file_start_next(void)
+{
+    int idx = music_next_index();
+    if (idx >= 0)
+        music_file_start_index(idx);
+}
+
 void audio_music_play(const char *const *paths, int count, bool random_loop, const char *signature)
 {
     if (!paths || count <= 0)
@@ -506,6 +596,7 @@ void audio_music_play(const char *const *paths, int count, bool random_loop, con
             audio_music_resume();
         return;
     }
+    bool file_mode = music_path_is_file(paths[0]);
 #ifdef HAVE_FLUIDSYNTH
     if (!fs_ok) {
         music_paused = false;
@@ -540,7 +631,21 @@ void audio_music_play(const char *const *paths, int count, bool random_loop, con
     free(music_sig);
     music_sig = signature ? xstrdup(signature) : NULL;
 
+    if (file_mode) {
+        music_file_mode = true;
+        music_file_started = false;
+        music_paused = false;
+        int idx = music_next_index();
+        if (idx < 0 || !music_file_start_index(idx)) {
+            log_warn("music: no playable file track for %s", signature ? signature : "?");
+            return;
+        }
+        log_info("music: %s (file, random=%d, %d tracks)", signature ? signature : "?",
+                 (int)random_loop, music_count);
+        return;
+    }
 #ifdef HAVE_FLUIDSYNTH
+    music_file_mode = false;
     int idx = music_next_index();
     if (idx < 0 || !music_start_index(idx)) {
         log_warn("music: no playable MIDI track for %s", signature ? signature : "?");

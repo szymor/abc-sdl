@@ -11,14 +11,24 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#ifdef __ANDROID__
+#include <android/log.h>
+#endif
+
 void log_info(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
+#ifdef __ANDROID__
+    char buf[2048];
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    __android_log_write(ANDROID_LOG_INFO, "abc", buf);
+#else
     fputs("[abc] ", stdout);
     vfprintf(stdout, fmt, ap);
     fputc('\n', stdout);
     fflush(stdout);
+#endif
     va_end(ap);
 }
 
@@ -26,9 +36,16 @@ void log_warn(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
+#ifdef __ANDROID__
+    char buf[2048];
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    __android_log_write(ANDROID_LOG_WARN, "abc", buf);
+#else
     fputs("[abc] warning: ", stderr);
     vfprintf(stderr, fmt, ap);
     fputc('\n', stderr);
+    fflush(stderr);
+#endif
     va_end(ap);
 }
 
@@ -36,9 +53,16 @@ void log_error(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
+#ifdef __ANDROID__
+    char buf[2048];
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    __android_log_write(ANDROID_LOG_ERROR, "abc", buf);
+#else
     fputs("[abc] error: ", stderr);
     vfprintf(stderr, fmt, ap);
     fputc('\n', stderr);
+    fflush(stderr);
+#endif
     va_end(ap);
 }
 

@@ -1,0 +1,87 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace = 'pl.szymor.abc'
+    compileSdk = 36
+    ndkVersion = '28.2.13676358'
+
+    defaultConfig {
+        applicationId = 'pl.szymor.abc'
+        minSdk = 24
+        targetSdk = 36
+        versionCode = 1
+        versionName = '0.1.0'
+
+        ndk {
+            abiFilters 'arm64-v8a', 'x86_64'
+        }
+
+        externalNativeBuild {
+            cmake {
+                arguments '-DANDROID_STL=c++_static'
+                cFlags '-O2'
+                cppFlags '-O2'
+            }
+        }
+    }
+
+    buildFeatures {
+        prefab = true
+        buildConfig = true
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file('../../CMakeLists.txt')
+            version = '3.22.1'
+        }
+    }
+
+    buildTypes {
+        debug {
+            debuggable = true
+        }
+        release {
+            minifyEnabled = false
+            // Keep release builds installable without a developer keystore.
+            // Replace with a proper signing config before publishing.
+            signingConfig = signingConfigs.debug
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
+    }
+
+    sourceSets {
+        main {
+            assets.srcDirs += [layout.buildDirectory.dir('generated/addon-assets')]
+        }
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+    }
+}
+
+tasks.register('syncAddonAssets', Copy) {
+    from file('../../addon')
+    into layout.buildDirectory.dir('generated/addon-assets/addon')
+    // Generated OGGs and addon artwork are small; do not copy local editor
+    // droppings if any appear in the addon tree.
+    exclude '**/.DS_Store'
+}
+
+tasks.named('preBuild').configure { dependsOn 'syncAddonAssets' }
+
+dependencies {
+    implementation files('libs/SDL3-3.4.18.aar')
+    implementation files('libs/SDL3_image-3.4.8.aar')
+    implementation files('libs/SDL3_mixer-3.2.4.aar')
+}
