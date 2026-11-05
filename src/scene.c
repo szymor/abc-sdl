@@ -880,20 +880,44 @@ static void load_comp(Scene *s, Comp *c)
         free(p);
     }
     if (s->module == 3 &&
-        (str_ieq(c->name, "sylaby") || str_ieq(c->name, "rzecz")) &&
-        ((c->wav_click && !c->wav_click2) || (!c->wav_click && c->wav_click2))) {
-        const char *known = c->wav_click ? c->click_file : c->click_file2;
-        char *alt = alternate_voice_path(known);
-        if (alt) {
-            char *p = scene_resolve_asset(s, alt);
-            if (file_exists(p)) {
-                if (!c->wav_click)
-                    c->wav_click = audio_load_file(p);
-                else
-                    c->wav_click2 = audio_load_file(p);
+        (str_ieq(c->name, "sylaby") || str_ieq(c->name, "rzecz"))) {
+        bool missing_one = (c->wav_click && !c->wav_click2) ||
+                           (!c->wav_click && c->wav_click2);
+        /* A few scenes (notably JAMNIK) name the same take twice instead of
+           referencing both the K and M recordings. */
+        bool duplicate = c->click_file[0] && c->click_file2[0] &&
+                         str_ieq(c->click_file, c->click_file2);
+        if (missing_one || duplicate) {
+            const char *known = missing_one
+                                    ? (c->wav_click ? c->click_file : c->click_file2)
+                                    : c->click_file;
+            char *alt = alternate_voice_path(known);
+            if (alt) {
+                char *p = scene_resolve_asset(s, alt);
+                if (file_exists(p)) {
+                    MIX_Audio *a = audio_load_file(p);
+                    if (a) {
+                        if (missing_one) {
+                            if (!c->wav_click)
+                                c->wav_click = a;
+                            else
+                                c->wav_click2 = a;
+                        } else {
+                            /* Keep the referenced take as the second one and
+                               use the derived sibling as the first, matching
+                               the K/M order of other word scenes. */
+                            snprintf(c->click_file, sizeof(c->click_file),
+                                     "%s", alt);
+                            c->wav_click = a;
+                            if (getenv("ABC_DEBUG"))
+                                fprintf(stderr, "word voice %s duplicate -> %s\n",
+                                        c->name, alt);
+                        }
+                    }
+                }
+                free(p);
+                free(alt);
             }
-            free(p);
-            free(alt);
         }
     }
 

@@ -461,6 +461,24 @@ if [ "$TITLE_VOICES" != "first second " ] || [ "$OBJECT_VOICES" != "first second
 fi
 echo "   title and object clicks alternate K/M recordings"
 
+echo "== duplicate word voice take"
+cat > "$TMP/dupvoice.txt" <<'EOF'
+scene 3053
+wait 10
+EOF
+ABC_DEBUG=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=dummy "$BIN" \
+    --data "$DATA" --script "$TMP/dupvoice.txt" > "$TMP/dupvoice.log" 2>&1
+if grep -q "word voice sylaby duplicate" "$TMP/dupvoice.log"; then
+    if ! grep -q "duplicate -> .*53sk.WAV" "$TMP/dupvoice.log"; then
+        echo "JAMNIK's duplicate take did not resolve to 53sk.WAV" >&2
+        grep "word voice" "$TMP/dupvoice.log" >&2
+        exit 1
+    fi
+    echo "   JAMNIK uses both the K and M syllable recordings"
+else
+    echo "   duplicate-take test skipped (no audio device)" >&2
+fi
+
 echo "== Zgadywanka success/final cue timing"
 cat > "$TMP/zgcues.txt" <<'EOF'
 scene 17012
