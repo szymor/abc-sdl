@@ -12,7 +12,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 NDK="${NDK:-${ANDROID_NDK_HOME:-$HOME/Android/Sdk/ndk/28.2.13676358}}"
 FFMPEG_VERSION="7.1.5"
-SRC="${FFMPEG_SRC:-/tmp/abc-sdl-ffmpeg/ffmpeg-${FFMPEG_VERSION}}"
+WORK="${TMPDIR:-/tmp}/abc-sdl-ffmpeg"
+SRC="${FFMPEG_SRC:-$WORK/ffmpeg-${FFMPEG_VERSION}}"
 OUT="${ROOT}/third_party/ffmpeg"
 API="${ANDROID_API:-24}"
 
@@ -52,7 +53,7 @@ build_abi() {
       ;;
   esac
 
-  local build="/tmp/opencode/ffmpeg-build-${abi}"
+  local build="$WORK/build-${abi}"
   local prefix="$OUT/$abi"
   local asm_flag=""
   # The x86 assembly in this FFmpeg release is not PIC-safe for Android's
@@ -61,6 +62,7 @@ build_abi() {
   if [ "$abi" = "x86_64" ]; then
     asm_flag="--disable-asm"
   fi
+  mkdir -p "$(dirname "$build")"
   rm -rf "$build"
   cp -a "$SRC" "$build"
   cd "$build"
@@ -104,8 +106,8 @@ build_abi() {
     --extra-cflags="-O2 -fPIC" \
     --extra-ldflags="-fPIC"
 
-  make -j"$(nproc)" >/tmp/opencode/ffmpeg-${abi}.log 2>&1
-  make install >>/tmp/opencode/ffmpeg-${abi}.log 2>&1
+  make -j"$(nproc)" >"$build.log" 2>&1
+  make install >>"$build.log" 2>&1
   echo "built $abi -> $prefix"
 }
 

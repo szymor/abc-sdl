@@ -1,5 +1,7 @@
 # Moje Pierwsze ABC — SDL3 re-implementation
 
+[![Build](https://github.com/szymor/abc-sdl/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/szymor/abc-sdl/actions/workflows/build.yml)
+
 A from-scratch C11/SDL3 port of the 1996 Polish children's CD-ROM
 **Moje Pierwsze ABC** (“My First ABC”, OPTIMUS NEXUS / “WiT & Luk”).
 
@@ -124,6 +126,16 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 See [`docs/ANDROID.md`](docs/ANDROID.md) for the content importer, developer
 shortcut (`adb push`), debug start scenes, touch controls and licensing notes.
+
+### CI builds
+
+Every push to `master` (or a manual workflow run) builds:
+
+* Linux x86_64 (`Arch` container) — `abc-sdl-linux-x86_64.tar.gz`
+* Windows x86_64 (MSYS2/MinGW) — `abc-sdl-windows-x86_64.zip`
+* Android release APK (arm64-v8a + x86_64) — `abc-sdl-android-release.apk`
+
+The artifacts are attached to the GitHub Actions run.
 
 ### Controls
 

@@ -1,0 +1,190 @@
+name: Build
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    name: Linux (x86_64)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container: archlinux:latest
+    steps:
+      - name: Bootstrap pacman and git
+        run: |
+          sed -i '/^\[options\]/a DisableSandbox' /etc/pacman.conf
+          pacman-key --init
+          pacman-key --populate archlinux
+          pacman -Sy --noconfirm --needed archlinux-keyring
+          pacman -Syu --noconfirm --needed ca-certificates git
+
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: >-
+          pacman -S --noconfirm --needed
+          base-devel cmake ninja pkgconf
+          sdl3 sdl3_image sdl3_mixer ffmpeg fluidsynth
+
+      - name: Configure and build
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+          ./build/abc-sdl --help >/dev/null
+
+      - name: Package
+        run: |
+          set -euo pipefail
+          name=abc-sdl-linux-x86_64
+          mkdir -p "dist/$name"
+          cp build/abc-sdl "dist/$name/"
+          cp -r addon "dist/$name/"
+          cp README.md "dist/$name/"
+          cat > "dist/$name/README-linux.txt" <<'EOF'
+          Built on Arch Linux.
+
+          Runtime packages:
+            sdl3 sdl3_image sdl3_mixer ffmpeg fluidsynth
+
+          A GM soundfont (for example soundfont-fluid) is needed for MIDI music.
+          Run ./abc-sdl --data /path/to/abc
+          EOF
+          tar -C dist -czf "$name.tar.gz" "$name"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: abc-sdl-linux-x86_64
+          path: abc-sdl-linux-x86_64.tar.gz
+          if-no-files-found: error
+
+  windows:
+    name: Windows (x86_64)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-pkgconf
+            mingw-w64-x86_64-sdl3
+            mingw-w64-x86_64-sdl3-image
+            mingw-w64-x86_64-sdl3-mixer
+            mingw-w64-x86_64-ffmpeg
+            mingw-w64-x86_64-fluidsynth
+            zip
+
+      - name: Configure and build
+        shell: msys2 {0}
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+          ./build/abc-sdl.exe --help >/dev/null
+
+      - name: Package
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+          name=abc-sdl-windows-x86_64
+          dest="dist/$name"
+          mkdir -p "$dest"
+          cp build/abc-sdl.exe "$dest/"
+          cp -r addon "$dest/"
+          cp README.md "$dest/"
+
+          # Copy every MinGW runtime DLL referenced by the executable, and
+          # the DLLs those depend on, so the zip is self-contained.
+          copy_dlls() {
+            local binary="$1"
+            local dll name
+            for dll in $(ldd "$binary" | awk '{print $3}' | grep -E '^/mingw64/bin/.*\.dll$' || true); do
+              name=$(basename "$dll")
+              if [ ! -f "$dest/$name" ]; then
+                cp "$dll" "$dest/$name"
+                copy_dlls "$dll"
+              fi
+            done
+          }
+          copy_dlls build/abc-sdl.exe
+
+          (cd dist && zip -9 -r "$name.zip" "$name")
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: abc-sdl-windows-x86_64
+          path: dist/abc-sdl-windows-x86_64.zip
+          if-no-files-found: error
+
+  android:
+    name: Android (arm64-v8a, x86_64)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK/NDK packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --install \
+            "platforms;android-36" \
+            "build-tools;36.0.0" \
+            "ndk;28.2.13676358" \
+            "cmake;3.22.1"
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Android/Sdk}}"
+          echo "ANDROID_NDK_HOME=$sdk_root/ndk/28.2.13676358" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_ROOT=$sdk_root/ndk/28.2.13676358" >> "$GITHUB_ENV"
+
+      - name: Cache Android dependencies and FFmpeg
+        uses: actions/cache@v4
+        with:
+          path: |
+            android/app/libs
+            third_party/ffmpeg
+          key: android-deps-${{ runner.os }}-${{ hashFiles('tools/fetch_android_deps.sh', 'tools/ndk-build-ffmpeg.sh') }}
+
+      - name: Fetch SDL AARs
+        run: tools/fetch_android_deps.sh
+
+      - name: Build decode-only FFmpeg
+        run: |
+          if [ ! -f third_party/ffmpeg/arm64-v8a/lib/libavcodec.a ] || \
+             [ ! -f third_party/ffmpeg/x86_64/lib/libavcodec.a ]; then
+            tools/ndk-build-ffmpeg.sh
+          fi
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build APK
+        working-directory: android
+        run: ./gradlew --no-daemon assembleRelease
+
+      - name: Collect APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk abc-sdl-android-release.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: abc-sdl-android
+          path: abc-sdl-android-release.apk
+          if-no-files-found: error
