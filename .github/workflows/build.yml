@@ -196,3 +196,38 @@ jobs:
           name: abc-sdl-android
           path: abc-sdl-android-release.apk
           if-no-files-found: error
+
+  release:
+    name: Update latest release
+    if: github.ref == 'refs/heads/master'
+    needs: [linux, windows, android]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+
+      - name: Publish rolling latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          linux=$(find release -type f -name 'abc-sdl-linux-x86_64.tar.gz' -print -quit)
+          windows=$(find release -type f -name 'abc-sdl-windows-x86_64.zip' -print -quit)
+          android=$(find release -type f -name 'abc-sdl-android-release.apk' -print -quit)
+          test -n "$linux" && test -n "$windows" && test -n "$android"
+
+          # Replace the rolling tag/release so "latest" always points at this
+          # master commit and carries exactly these three assets.
+          gh release delete latest --yes --cleanup-tag || true
+          gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/tags/latest" || true
+
+          gh release create latest \
+            --target "$GITHUB_SHA" \
+            --title "Latest master build" \
+            --notes "Automated build of \`master\` at [${GITHUB_SHA}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA})." \
+            --latest \
+            "$linux" "$windows" "$android"

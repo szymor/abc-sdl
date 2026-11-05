@@ -135,7 +135,10 @@ Every push to `master` (or a manual workflow run) builds:
 * Windows x86_64 (MSYS2/MinGW) — `abc-sdl-windows-x86_64.zip`
 * Android release APK (arm64-v8a + x86_64) — `abc-sdl-android-release.apk`
 
-The artifacts are attached to the GitHub Actions run.
+The artifacts are attached to the GitHub Actions run. A successful run also
+replaces the rolling release tagged
+[`latest`](https://github.com/szymor/abc-sdl/releases/tag/latest), so its three
+assets always point at the newest successful `master` build.
 
 ### Controls
 
