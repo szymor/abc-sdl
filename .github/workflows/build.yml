@@ -106,6 +106,14 @@ jobs:
           cp build/abc-sdl.exe "$dest/"
           cp -r addon "$dest/"
           cp README.md "$dest/"
+          cat > "$dest/README-windows.txt" <<'EOF'
+          Windows x86_64 build (MSYS2/MinGW).
+
+          Run:  abc-sdl.exe --data C:\path\to\abc
+
+          The addon/ directory is included.  For MIDI music, set
+          ABC_SOUNDFONT=C:\path\to\a\GM\soundfont.sf2 before launching.
+          EOF
 
           # Copy every MinGW runtime DLL referenced by the executable, and
           # the DLLs those depend on, so the zip is self-contained.
