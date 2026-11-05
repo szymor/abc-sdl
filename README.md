@@ -132,7 +132,7 @@ shortcut (`adb push`), debug start scenes, touch controls and licensing notes.
 | hover | reveals objects in the letter playground; raises individual crayons in the game toolbar at the bottom-right |
 | wheel / ← → (train) | scroll the train |
 | ESC | close overlay, go back one scene, or quit |
-| F11 | fullscreen |
+| F11 / Alt+Enter | fullscreen |
 | F12 | save a screenshot to `screenshots/` |
 
 The train strip keeps its horizontal position for the whole session: leaving

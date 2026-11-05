@@ -493,6 +493,12 @@ static void get_hud_layout(HudLayout *layout, SDL_Window *window)
     hud_layout(layout, ww, wh, stage, g_paused);
 }
 
+static void toggle_fullscreen(SDL_Window *window)
+{
+    bool fs = (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0;
+    SDL_SetWindowFullscreen(window, !fs);
+}
+
 static void app_back(Scene **ps, int *scene_id, int *hist_n, int *history,
                      bool *running)
 {
@@ -908,9 +914,12 @@ int main(int argc, char **argv)
             case SDL_EVENT_KEY_DOWN:
                 if (ev.key.key == SDLK_ESCAPE || ev.key.key == SDLK_AC_BACK) {
                     app_back(&scene, &scene_id, &hist_n, history, &running);
-                } else if (ev.key.key == SDLK_F11) {
-                    bool fs = (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0;
-                    SDL_SetWindowFullscreen(window, !fs);
+                } else if (ev.key.key == SDLK_F11 ||
+                           ((ev.key.key == SDLK_RETURN ||
+                             ev.key.key == SDLK_KP_ENTER) &&
+                            (ev.key.mod & SDL_KMOD_ALT))) {
+                    if (!ev.key.repeat)
+                        toggle_fullscreen(window);
                 } else if (ev.key.key == SDLK_F12) {
                     scene_toast(scene, "ZAPISANO ZRZUT EKRANU", 1800);
                     scene->print_requested = true;
