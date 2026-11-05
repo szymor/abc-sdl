@@ -6,10 +6,9 @@ selects the `abc/` folder extracted from their own CD; the app copies it into
 private app storage and the native engine then reads ordinary filesystem
 paths.
 
-The only bundled add-on is `addon/` (the IGLO hover artwork/WAV and the
-pre-rendered MIDI OGGs).  It is copied into app storage on first launch so the
-game has music and the IGLO photo even when the user did not supply the addon
-folder.
+The add-on data (`addon/`: IGLO hover artwork/WAV, the IGLO photo, and the
+pre-rendered MIDI OGGs) is embedded in the APK.  The app refreshes its private
+copy every time the game starts; there is no add-on folder picker.
 
 ---
 
@@ -97,10 +96,7 @@ The launcher activity is `SetupActivity`.
    /sdcard/Android/data/pl.szymor.abc/files/abc/
    ```
 
-4. Optionally choose **Wybierz folder dodatków** and import an `addon/` folder.
-   The bundled add-on is merged later; missing files are copied, existing
-   user files are never overwritten.
-5. Press **Graj**.
+4. Press **Graj**.  The embedded add-on is installed automatically.
 
 The copy is staged in `abc.importing/` and swapped into place only after it
 passes validation.  An interrupted import is cleaned up on the next launch.
@@ -108,7 +104,7 @@ The app needs roughly 650 MB of free space during import (the source and the
 copy coexist temporarily).
 
 Settings are available from the in-game pause menu under **DANE GRY**:
-change data, import addons, or remove imported data.
+change the game data or remove imported data.
 
 ### Developer shortcut
 
@@ -182,8 +178,9 @@ work.  Desktop still uses FluidSynth when the playlists point at `.mid` files.
 The original CD data is © 1996 OPTIMUS NEXUS / “WiT & Luk”.  It is not part of
 the APK and must be supplied by the user from their own disc.  Do not publish
 a build that bundles `abc/` unless you have the necessary rights.  The bundled
-`addon/` is small and exists to supply the IGLO material and the rendered MIDI
-tracks; review its distribution separately if you publish the app.
+`addon/` is small, is embedded in the APK, and supplies the IGLO material and
+the rendered MIDI tracks; review its distribution separately if you publish
+the app.
 
 ## Known limitations
 

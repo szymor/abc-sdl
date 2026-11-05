@@ -31,7 +31,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class SetupActivity extends Activity {
     private static final int REQ_DATA = 1001;
-    private static final int REQ_ADDON = 1002;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private volatile AtomicBoolean cancel = new AtomicBoolean(false);
@@ -42,7 +41,6 @@ public class SetupActivity extends Activity {
     private TextView status;
     private ProgressBar progress;
     private Button pickData;
-    private Button pickAddon;
     private Button importButton;
     private Button playButton;
 
@@ -54,9 +52,7 @@ public class SetupActivity extends Activity {
             // Leftovers from an interrupted import.  An in-progress import is
             // cancelled in onDestroy, so this is safe on a fresh activity.
             ContentStore.deleteRecursive(ContentStore.stagingAbc(this));
-            ContentStore.deleteRecursive(ContentStore.stagingAddon(this));
             ContentStore.deleteRecursive(ContentStore.backupAbc(this));
-            ContentStore.deleteRecursive(ContentStore.backupAddon(this));
         }
 
         if (!manage && ContentStore.hasContent(this)) {
@@ -116,9 +112,6 @@ public class SetupActivity extends Activity {
 
         pickData = button(R.string.setup_pick_data, v -> pickFolder(REQ_DATA));
         root.addView(pickData, buttonParams());
-
-        pickAddon = button(R.string.setup_pick_addon, v -> pickFolder(REQ_ADDON));
-        root.addView(pickAddon, buttonParams());
 
         importButton = button(R.string.setup_import, v -> startImport());
         root.addView(importButton, buttonParams());
@@ -192,30 +185,15 @@ public class SetupActivity extends Activity {
         } catch (Exception ignored) {
         }
 
-        ContentImporter.Plan inspected = ContentImporter.inspect(this, uri);
         if (requestCode == REQ_DATA) {
-            if (!inspected.hasAbc() && !inspected.hasAddon()) {
+            ContentImporter.Plan inspected = ContentImporter.inspect(this, uri);
+            if (!inspected.hasAbc()) {
                 toast(inspected.error != null ? inspected.error : "Nieprawidłowy folder.");
                 return;
             }
-            if (!inspected.hasAbc()) {
-                toast("To wygląda na folder dodatków, nie danych gry.");
-                return;
-            }
             plan = inspected;
-        } else if (requestCode == REQ_ADDON) {
-            if (!inspected.hasAddon()) {
-                toast("W tym folderze nie ma dodatków (OVR/WAV/AVI/MIDI).");
-                return;
-            }
-            if (plan == null) {
-                plan = new ContentImporter.Plan();
-            }
-            plan.addon = inspected.addon;
-            plan.addonFileCount = inspected.addonFileCount;
-            plan.bytes += inspected.bytes;
+            refreshUi();
         }
-        refreshUi();
     }
 
     private void refreshUi() {
@@ -230,12 +208,6 @@ public class SetupActivity extends Activity {
                 sb.append(" • ").append(plan.aviCount).append(" AVI");
                 sb.append(" • ").append(plan.midiCount).append(" MIDI");
             }
-            if (plan.hasAddon()) {
-                if (sb.length() > 0) {
-                    sb.append('\n');
-                }
-                sb.append("Dodatki: ").append(plan.addonFileCount).append(" plików");
-            }
             if (plan.bytes > 0) {
                 sb.append("\nRozmiar do skopiowania: ")
                         .append(String.format(Locale.ROOT, "%.1f MB", plan.bytes / (1024.0 * 1024.0)));
@@ -248,17 +220,16 @@ public class SetupActivity extends Activity {
             summary.setText(R.string.setup_no_selection);
         }
 
-        importButton.setEnabled(plan != null && (plan.hasAbc() || plan.hasAddon()));
+        importButton.setEnabled(plan != null && plan.hasAbc());
         playButton.setEnabled(has);
         pickData.setEnabled(true);
-        pickAddon.setEnabled(true);
         importButton.setVisibility(has && plan == null ? View.GONE : View.VISIBLE);
         playButton.setVisibility(has ? View.VISIBLE : View.GONE);
         progress.setVisibility(View.GONE);
     }
 
     private void startImport() {
-        if (plan == null || (!plan.hasAbc() && !plan.hasAddon())) {
+        if (plan == null || !plan.hasAbc()) {
             toast(getString(R.string.setup_no_selection));
             return;
         }
@@ -310,7 +281,6 @@ public class SetupActivity extends Activity {
 
     private void setBusy(boolean busy) {
         pickData.setEnabled(!busy);
-        pickAddon.setEnabled(!busy);
         importButton.setEnabled(!busy);
         playButton.setEnabled(!busy && ContentStore.hasContent(this));
         if (busy) {
@@ -335,7 +305,6 @@ public class SetupActivity extends Activity {
     }
 
     private void startGame() {
-        ContentStore.ensureBundledAddon(this);
         if (!ContentStore.hasContent(this)) {
             toast(getString(R.string.setup_no_selection));
             return;

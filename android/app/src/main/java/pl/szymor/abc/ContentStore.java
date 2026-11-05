@@ -15,7 +15,6 @@ import java.io.InputStream;
 final class ContentStore {
     static final String PREFS = "abc";
     static final String KEY_ABC = "abc_root";
-    static final String KEY_ADDON = "addon_root";
     static final String KEY_IMPORTED_AT = "imported_at";
     static final String KEY_FRM_COUNT = "frm_count";
     static final String KEY_BYTES = "bytes";
@@ -49,16 +48,8 @@ final class ContentStore {
         return new File(baseDir(context), "abc.importing");
     }
 
-    static File stagingAddon(Context context) {
-        return new File(baseDir(context), "addon.importing");
-    }
-
     static File backupAbc(Context context) {
         return new File(baseDir(context), "abc.old");
-    }
-
-    static File backupAddon(Context context) {
-        return new File(baseDir(context), "addon.old");
     }
 
     static String dataRoot(Context context) {
@@ -132,7 +123,6 @@ final class ContentStore {
         SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         prefs.edit()
                 .putString(KEY_ABC, dataRoot(context))
-                .putString(KEY_ADDON, addonRoot(context))
                 .putLong(KEY_IMPORTED_AT, System.currentTimeMillis())
                 .putInt(KEY_FRM_COUNT, frmCount)
                 .putLong(KEY_BYTES, bytes)
@@ -162,9 +152,9 @@ final class ContentStore {
     }
 
     /**
-     * The small addon (IGLO artwork, its WAV, and the pre-rendered MIDI
-     * OGGs) is bundled in the APK.  Copy any missing files into app storage;
-     * never overwrite a user-imported addon.
+     * The small add-on (IGLO artwork, its WAV, and the pre-rendered MIDI
+     * OGGs) is embedded in the APK.  Refresh the private copy so an upgraded
+     * APK always wins over files from an older install.
      */
     static void ensureBundledAddon(Context context) {
         File dest = addonDir(context);
@@ -180,9 +170,6 @@ final class ContentStore {
             String[] children = assets.list(assetPath);
             if (children == null || children.length == 0) {
                 File file = dest;
-                if (file.exists()) {
-                    return;
-                }
                 try (InputStream in = assets.open(assetPath);
                      BufferedInputStream bin = new BufferedInputStream(in, 65536);
                      FileOutputStream fos = new FileOutputStream(file);
@@ -212,9 +199,7 @@ final class ContentStore {
         deleteRecursive(new File(internal, "abc"));
         deleteRecursive(new File(internal, "addon"));
         deleteRecursive(stagingAbc(context));
-        deleteRecursive(stagingAddon(context));
         deleteRecursive(backupAbc(context));
-        deleteRecursive(backupAddon(context));
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply();
     }
 }

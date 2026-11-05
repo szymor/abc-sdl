@@ -51,13 +51,14 @@ public class AbcActivity extends SDLActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // Refresh the embedded add-on before SDL starts the native engine.
+        ContentStore.ensureBundledAddon(this);
         super.onCreate(savedInstanceState);
         if (!ContentStore.hasContent(this)) {
             startActivity(new Intent(this, SetupActivity.class));
             finish();
             return;
         }
-        ContentStore.ensureBundledAddon(this);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         applyImmersiveMode();

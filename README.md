@@ -111,8 +111,9 @@ Default start scene is `100` (splash). Useful options:
 
 The Android app contains **no original game data**.  On first launch it asks
 for the extracted `abc/` folder, copies it into app-private storage, and then
-runs the same native engine.  The small `addon/` tree (IGLO artwork/WAV and the
-rendered MIDI OGGs) is bundled and merged in.
+runs the same native engine.  The small `addon/` tree (IGLO artwork/WAV, the
+IGLO photo, and rendered MIDI OGGs) is embedded in the APK and installed
+automatically; there is no separate add-on folder picker.
 
 ```bash
 tools/fetch_android_deps.sh

@@ -26,7 +26,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 final class ContentImporter {
     private static final String[] ABC_TREES = {"FRM", "WAV", "AVI", "MIDI"};
-    private static final String[] ADDON_TREES = {"AVI", "OVR", "WAV", "MIDI"};
 
     private ContentImporter() {}
 
@@ -48,21 +47,15 @@ final class ContentImporter {
 
     static final class Plan {
         Root abc;
-        Root addon;
         int frmCount;
         int wavCount;
         int aviCount;
         int midiCount;
-        int addonFileCount;
         long bytes;
         String error;
 
         boolean hasAbc() {
             return abc != null;
-        }
-
-        boolean hasAddon() {
-            return addon != null;
         }
     }
 
@@ -113,13 +106,6 @@ final class ContentImporter {
                 }
             }
 
-            String addonId = findChild(context, treeUri, treeDocId, "addon");
-            if (addonId != null) {
-                plan.addon = new Root(treeUri, addonId, displayName(context, treeUri, addonId));
-            } else if (plan.abc == null && looksLikeAddon(context, treeUri, treeDocId)) {
-                plan.addon = new Root(treeUri, treeDocId, rootName);
-            }
-
             if (plan.abc != null) {
                 Stats frm = statsForChild(context, treeUri, plan.abc.docId, "FRM");
                 Stats wav = statsForChild(context, treeUri, plan.abc.docId, "WAV");
@@ -131,15 +117,9 @@ final class ContentImporter {
                 plan.midiCount = midi.files;
                 plan.bytes += frm.bytes + wav.bytes + avi.bytes + midi.bytes;
             }
-            if (plan.addon != null) {
-                Stats addon = statsForTree(context, treeUri, plan.addon.docId);
-                plan.addonFileCount = addon.files;
-                plan.bytes += addon.bytes;
-            }
-
-            if (plan.abc == null && plan.addon == null) {
-                plan.error = "W tym folderze nie ma danych gry (FRM/WAV/AVI/MIDI) ani dodatków.";
-            } else if (plan.abc != null && plan.frmCount == 0) {
+            if (plan.abc == null) {
+                plan.error = "W tym folderze nie ma danych gry (FRM/WAV/AVI/MIDI).";
+            } else if (plan.frmCount == 0) {
                 plan.error = "Folder FRM jest pusty.";
             }
             return plan;
@@ -150,16 +130,14 @@ final class ContentImporter {
     }
 
     static Result importPlan(Context context, Plan plan, Listener listener, AtomicBoolean cancel) {
-        if (plan == null || (plan.abc == null && plan.addon == null)) {
+        if (plan == null || plan.abc == null) {
             return new Result(false, "Nie wybrano danych do importu.", 0, 0);
         }
         File stagingAbc = ContentStore.stagingAbc(context);
-        File stagingAddon = ContentStore.stagingAddon(context);
         ContentStore.deleteRecursive(stagingAbc);
-        ContentStore.deleteRecursive(stagingAddon);
 
         Progress progress = new Progress(plan.bytes, plan.frmCount + plan.wavCount + plan.aviCount
-                + plan.midiCount + plan.addonFileCount);
+                + plan.midiCount);
         try {
             if (plan.abc != null) {
                 if (!stagingAbc.mkdirs() && !stagingAbc.isDirectory()) {
@@ -184,44 +162,23 @@ final class ContentImporter {
                 writeMarker(stagingAbc, plan, frm);
             }
 
-            if (plan.addon != null) {
-                if (!stagingAddon.mkdirs() && !stagingAddon.isDirectory()) {
-                    throw new IOException("Nie można utworzyć katalogu dodatków.");
-                }
-                List<Child> children = listChildren(context, plan.addon.treeUri, plan.addon.docId);
-                for (Child child : children) {
-                    copyDocument(context, plan.addon.treeUri, child.docId,
-                            new File(stagingAddon, safeName(child.name)),
-                            progress, listener, cancel);
-                }
-            }
-
             if (cancelled(cancel)) {
                 throw new IOException("Import anulowany.");
             }
 
             File finalAbc = ContentStore.abcDir(context);
-            File finalAddon = ContentStore.addonDir(context);
-            if (plan.abc != null) {
-                replaceDirectory(stagingAbc, finalAbc, ContentStore.backupAbc(context));
-            }
-            if (plan.addon != null) {
-                replaceDirectory(stagingAddon, finalAddon, ContentStore.backupAddon(context));
-            }
+            replaceDirectory(stagingAbc, finalAbc, ContentStore.backupAbc(context));
 
             int frm = ContentStore.countFrm(context);
-            long bytes = ContentStore.treeSize(finalAbc) + ContentStore.treeSize(finalAddon);
+            long bytes = ContentStore.treeSize(finalAbc);
             ContentStore.saveImported(context, frm, bytes);
-            String message = plan.addon != null && plan.abc == null
-                    ? "Zaimportowano dodatki."
-                    : "Zaimportowano dane gry (" + frm + " scen).";
-            if (plan.abc != null && frm != 294) {
+            String message = "Zaimportowano dane gry (" + frm + " scen).";
+            if (frm != 294) {
                 message += " Uwaga: oczekiwano 294 scen, znaleziono " + frm + ".";
             }
             return new Result(true, message, frm, bytes);
         } catch (Exception e) {
             ContentStore.deleteRecursive(stagingAbc);
-            ContentStore.deleteRecursive(stagingAddon);
             String msg = e.getMessage();
             if (msg == null || msg.isEmpty()) {
                 msg = e.getClass().getSimpleName();
@@ -409,16 +366,6 @@ final class ContentImporter {
         } catch (Exception ignored) {
         }
         return false;
-    }
-
-    private static boolean looksLikeAddon(Context context, Uri treeUri, String docId) {
-        if (findChild(context, treeUri, docId, "FRM") != null) {
-            return false;
-        }
-        return findChild(context, treeUri, docId, "OVR") != null
-                || findChild(context, treeUri, docId, "MIDI") != null
-                || (findChild(context, treeUri, docId, "WAV") != null
-                    && findChild(context, treeUri, docId, "AVI") != null);
     }
 
     private static Stats statsForChild(Context context, Uri treeUri, String rootDocId,
