@@ -14,6 +14,8 @@ screenshots/
 tests/out/
 *.png
 !docs/**/*.png
+!android/icon/*.png
+!android/app/src/main/res/mipmap-*/*.png
 
 # Editors / OS
 .vscode/

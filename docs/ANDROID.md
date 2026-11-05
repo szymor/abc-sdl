@@ -68,6 +68,21 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 The APK is signed with the debug key for both debug and release builds.  Replace
 the signing configuration before publishing.
 
+## Launcher icon
+
+The launcher icon is the train from the original `ABC.EXE` (`MAINICON`,
+32×32, 16 colours), saved as `android/icon/ic_launcher_32.png`.  Legacy
+density-specific icons and the adaptive foreground are generated from it with
+nearest-neighbour scaling:
+
+```bash
+python3 tools/make_android_icon.py
+```
+
+The adaptive icon uses a white background (`res/values/colors.xml`); the
+foreground removes only the border-connected white of the source icon so the
+train remains crisp inside Android's circular safe zone.
+
 ## First run: importing the CD data
 
 The launcher activity is `SetupActivity`.
