@@ -686,6 +686,23 @@ grep -q "keeping word-arrow audio" "$TMP/arrowaudio.log"
 grep -q "scene=3005" "$TMP/arrowaudio.log"
 echo "   arrow WAV is not stopped by the word-screen transition"
 
+echo "== letter-object audio across navigation"
+cat > "$TMP/letteraudio.txt" <<'EOF'
+scene 2001
+wait 100
+move 240 230
+wait 100
+click 240 230
+wait 200
+dump
+EOF
+ABC_DEBUG=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=dummy "$BIN" \
+    --data "$DATA" --script "$TMP/letteraudio.txt" > "$TMP/letteraudio.log" 2>&1
+grep -q "click Z1" "$TMP/letteraudio.log"
+grep -q "keeping letter-object audio" "$TMP/letteraudio.log"
+grep -q "scene=3007" "$TMP/letteraudio.log"
+echo "   object WAV is not stopped by the word-screen transition"
+
 echo "== letter-playground object hover"
 cat > "$TMP/letterobj.txt" <<EOF
 scene 2001

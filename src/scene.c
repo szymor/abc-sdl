@@ -1275,12 +1275,15 @@ void scene_free(Scene *s)
         return;
     modules_save_train_scroll(s);
     /* Do not let one-shots (word pronunciation, help, video sound) leak into
-       the next scene.  MIDI music is managed separately.  Word-arrow clicks
-       are an explicit exception: their WAV belongs to the target word and
-       must survive the immediate scene change. */
+       the next scene.  MIDI music is managed separately.  Word arrows and
+       letter-playground objects are explicit exceptions: their WAV belongs to
+       the target word and must survive the immediate scene change. */
     if (s->keep_audio_on_leave) {
-        if (getenv("ABC_DEBUG"))
-            log_info("keeping word-arrow audio across scene %d ->", s->id);
+        if (getenv("ABC_DEBUG")) {
+            const char *what = s->module == 2 ? "letter-object" :
+                               s->module == 3 ? "word-arrow" : "click";
+            log_info("keeping %s audio across scene %d ->", what, s->id);
+        }
     } else {
         audio_stop_all();
     }
@@ -2061,10 +2064,14 @@ bool scene_click(Scene *s, int x, int y)
     if (hit->state != old)
         play_state_wave(s, hit, hit->state);
     if (hit->auto_click_exit && hit->modal_set) {
-        /* Word arrows carry the target word's click WAV.  Keep it alive
-           through the scene switch instead of stopping it in scene_free. */
-        if (s->module == 3 &&
-            (str_ieq(hit->name, "browWyrL") || str_ieq(hit->name, "browWyrP")))
+        /* Word arrows and letter-playground objects carry the target word's
+           click WAV.  Keep it alive through the scene switch instead of
+           stopping it in scene_free. */
+        bool word_arrow = s->module == 3 &&
+            (str_ieq(hit->name, "browWyrL") || str_ieq(hit->name, "browWyrP"));
+        bool letter_object = s->module == 2 &&
+            hit->modal_result >= 3001 && hit->modal_result <= 3135;
+        if (word_arrow || letter_object)
             s->keep_audio_on_leave = true;
         scene_request(s, hit->modal_result);
     }

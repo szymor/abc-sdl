@@ -218,9 +218,10 @@ Requested fixes that are active by default:
   uses `OVR/2009_IGLO_hover.bmp`: hovering the baked igloo shows the addon
   artwork and plays the same 0.3 s hover cue as the IGLO word-screen object
   (`WAV/46H.WAV`); clicking it opens IGLO.
-* **Word-arrow audio:** clicking a word-screen arrow plays the target word's
-  click WAV. That WAV is no longer stopped by the immediately following scene
-  change, so the arrow click is actually audible before the next word appears.
+* **Word-entry audio:** clicking a word-screen arrow or a letter-playground
+  object plays the target word's click WAV. That WAV is no longer stopped by
+  the immediately following scene change, so the recording is actually audible
+  before the next word appears.
 * **Word title/object voice alternation:** successive clicks on the title or
   object image alternate between the K and M recordings (`Nsk`/`Nsm` and
   `Nck`/`Ncm`). The first click keeps the original state-appropriate take;
