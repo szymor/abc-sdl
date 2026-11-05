@@ -16,7 +16,6 @@ void platform_log(const char *fmt, ...);
 
 /* Audio focus notifications from the Java activity. */
 bool platform_audio_focus_lost(void);
-void platform_clear_audio_focus_lost(void);
 
 /* Ask the Java side to open the content manager, if available. */
 void platform_open_content_manager(void);

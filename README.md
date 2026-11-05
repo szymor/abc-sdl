@@ -34,7 +34,7 @@ The reverse-engineering specification this port is based on lives in
 | Video (AVI) | complete — Cinepak/MSVideo1/Indeo3 decoded by FFmpeg into the `TEkran` rect, with audio |
 | Cursors (`PEDZEL`, `LIT_*`) | brush cursor extracted from `ABC.EXE`; the maze draws the word's letter as a sprite (the `LIT_*` resources are available in `src/cursors_data.h`) |
 | Printing | exports a PNG instead of GDI printing |
-| Android | Gradle/NDK port with first-run CD-data import, touch controls, HUD, OGG music and decode-only FFmpeg |
+| Android | Gradle/NDK port with first-run CD-data import, touch controls, OGG music and decode-only FFmpeg |
 
 Every scene was loaded and drawn in a headless pass (`--script` over all 294
 IDs) without errors. Every game module was driven to completion by scripted
@@ -163,7 +163,6 @@ src/video.c     AVI demux/decode (FFmpeg), frame timing, audio extraction
 src/font.c      tiny 5×7 bitmap font for placeholders and toasts
 src/util.c      file loading, case-insensitive Windows path resolution
 src/platform/   Android/desktop paths, content roots, audio-focus bridge
-src/ui/hud.c    Android system HUD and pause/settings menu
 android/        Gradle project, content importer, Java activity/bridge
 tools/          cursor extraction, MIDI→OGG, Android deps/FFmpeg builds
 ```

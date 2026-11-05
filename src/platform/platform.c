@@ -26,11 +26,6 @@ bool platform_audio_focus_lost(void)
     return g_audio_focus_lost != 0;
 }
 
-void platform_clear_audio_focus_lost(void)
-{
-    g_audio_focus_lost = 0;
-}
-
 void platform_log(const char *fmt, ...)
 {
     va_list ap;

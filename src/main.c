@@ -4,7 +4,6 @@
 #include "font.h"
 #include "platform/platform.h"
 #include "scene.h"
-#include "ui/hud.h"
 #include "util.h"
 
 #include <SDL3/SDL.h>
@@ -26,7 +25,6 @@ typedef struct {
     bool dragged;
     bool reveal_only;
     bool train_gesture;
-    bool hud;
 } TouchState;
 
 typedef struct {
@@ -473,24 +471,15 @@ done:
 }
 
 static bool g_touch_input = false;
-static bool g_hud_enabled = false;
 static bool g_paused = false;
+static bool g_background = false;
 static bool g_sound_on = true;
-static bool g_music_on = true;
 static uint64_t g_last_back_ms = 0;
 
 static void apply_input_mode(Scene *scene)
 {
     if (scene)
         scene_set_touch_mode(scene, g_touch_input);
-}
-
-static void get_hud_layout(HudLayout *layout, SDL_Window *window)
-{
-    int ww = 0, wh = 0;
-    SDL_GetWindowSizeInPixels(window, &ww, &wh);
-    SDL_Rect stage = fit_rect(window);
-    hud_layout(layout, ww, wh, stage, g_paused);
 }
 
 static void toggle_fullscreen(SDL_Window *window)
@@ -505,7 +494,7 @@ static void app_back(Scene **ps, int *scene_id, int *hist_n, int *history,
     Scene *s = *ps;
     if (g_paused) {
         g_paused = false;
-        if (g_music_on && g_sound_on)
+        if (g_sound_on)
             audio_music_resume();
         return;
     }
@@ -521,7 +510,7 @@ static void app_back(Scene **ps, int *scene_id, int *hist_n, int *history,
         video_close(s->video);
         s->video = NULL;
         s->video_stop_music = false;
-        if (g_music_on && g_sound_on)
+        if (g_sound_on)
             audio_music_resume();
         return;
     }
@@ -563,59 +552,8 @@ static void leave_pause(void)
         return;
     log_info("pause left");
     g_paused = false;
-    if (g_music_on && g_sound_on)
+    if (g_sound_on)
         audio_music_resume();
-}
-
-static bool handle_hud_action(HudAction action, Scene **ps, int *scene_id,
-                              int *hist_n, int *history, bool *running)
-{
-    Scene *s = *ps;
-    log_info("hud action %d", (int)action);
-    switch (action) {
-    case HUD_PAUSE:
-        enter_pause(s);
-        return true;
-    case HUD_HOME:
-        if (s) {
-            scene_request(s, 1001);
-            leave_pause();
-        }
-        return true;
-    case HUD_SOUND:
-    case HUD_EFFECTS:
-        g_sound_on = !g_sound_on;
-        audio_enabled = g_sound_on;
-        if (!g_sound_on) {
-            audio_stop_all();
-            audio_music_pause();
-        } else if (!g_paused && g_music_on) {
-            audio_music_resume();
-        }
-        return true;
-    case HUD_BACK:
-        app_back(ps, scene_id, hist_n, history, running);
-        return true;
-    case HUD_RESUME:
-        leave_pause();
-        return true;
-    case HUD_MUSIC:
-        g_music_on = !g_music_on;
-        if (!g_music_on)
-            audio_music_pause();
-        else if (!g_paused && g_sound_on)
-            audio_music_resume();
-        return true;
-    case HUD_MANAGER:
-        enter_pause(s);
-        platform_open_content_manager();
-        return true;
-    case HUD_EXIT:
-        *running = false;
-        return true;
-    default:
-        return false;
-    }
 }
 
 #ifdef __ANDROID__
@@ -734,7 +672,6 @@ int main(int argc, char **argv)
     Scene *scene = NULL;
     TouchState touch = {0};
     g_touch_input = platform_is_android();
-    g_hud_enabled = platform_is_android();
     g_sound_on = !opt.mute;
     uint64_t last = SDL_GetTicksNS();
 
@@ -755,10 +692,11 @@ int main(int argc, char **argv)
                 running = false;
                 break;
             case SDL_EVENT_WILL_ENTER_BACKGROUND:
+                g_background = true;
                 enter_pause(scene);
                 break;
             case SDL_EVENT_DID_ENTER_FOREGROUND:
-                /* Stay on the pause screen; the child resumes explicitly. */
+                g_background = false;
                 break;
             case SDL_EVENT_TERMINATING:
                 if (scene && scene->module == 1)
@@ -787,27 +725,10 @@ int main(int argc, char **argv)
             case SDL_EVENT_FINGER_DOWN: {
                 if (touch.active || !scene)
                     break;
-                int wwp = 0, whp = 0;
-                SDL_GetWindowSizeInPixels(window, &wwp, &whp);
-                float wxp = ev.tfinger.x * (float)wwp;
-                float wyp = ev.tfinger.y * (float)whp;
-                if (g_hud_enabled) {
-                    HudLayout hl;
-                    get_hud_layout(&hl, window);
-                    HudAction ha = hud_hit(&hl, wxp, wyp);
-                    if (ha != HUD_NONE) {
-                        handle_hud_action(ha, &scene, &scene_id, &hist_n, history, &running);
-                        touch.active = true;
-                        touch.finger = ev.tfinger.fingerID;
-                        touch.hud = true;
-                        break;
-                    }
-                    if (g_paused) {
-                        touch.active = true;
-                        touch.finger = ev.tfinger.fingerID;
-                        touch.hud = true;
-                        break;
-                    }
+                if (g_paused) {
+                    touch.active = true;
+                    touch.finger = ev.tfinger.fingerID;
+                    break;
                 }
                 SDL_Rect dst = fit_rect(window);
                 int lx = -1, ly = -1;
@@ -825,7 +746,6 @@ int main(int argc, char **argv)
                 touch.dragged = false;
                 touch.reveal_only = false;
                 touch.train_gesture = false;
-                touch.hud = false;
                 g_touch_input = true;
                 scene_set_touch_mode(scene, true);
                 if (scene->module == 2) {
@@ -846,7 +766,7 @@ int main(int argc, char **argv)
             case SDL_EVENT_FINGER_MOTION: {
                 if (!touch.active || ev.tfinger.fingerID != touch.finger || !scene)
                     break;
-                if (touch.hud || g_paused || touch.reveal_only)
+                if (g_paused || touch.reveal_only)
                     break;
                 SDL_Rect dst = fit_rect(window);
                 int lx = -1, ly = -1;
@@ -874,11 +794,6 @@ int main(int argc, char **argv)
             case SDL_EVENT_FINGER_CANCELED: {
                 if (!touch.active || ev.tfinger.fingerID != touch.finger || !scene)
                     break;
-                if (touch.hud) {
-                    touch.hud = false;
-                    touch.active = false;
-                    break;
-                }
                 if (g_paused) {
                     touch.active = false;
                     break;
@@ -944,17 +859,8 @@ int main(int argc, char **argv)
             }
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
                 if (ev.button.button == SDL_BUTTON_LEFT) {
-                    if (g_hud_enabled) {
-                        HudLayout hl;
-                        get_hud_layout(&hl, window);
-                        HudAction ha = hud_hit(&hl, ev.button.x, ev.button.y);
-                        if (ha != HUD_NONE) {
-                            handle_hud_action(ha, &scene, &scene_id, &hist_n, history, &running);
-                            break;
-                        }
-                        if (g_paused)
-                            break;
-                    }
+                    if (g_paused)
+                        break;
                     int x, y;
                     SDL_Rect dst = fit_rect(window);
                     map_mouse(&dst, ev.button.x, ev.button.y, &x, &y);
@@ -990,8 +896,10 @@ int main(int argc, char **argv)
             dt = 0.1f;
 
         if (platform_audio_focus_lost()) {
-            platform_clear_audio_focus_lost();
-            enter_pause(scene);
+            if (!g_paused)
+                enter_pause(scene);
+        } else if (!g_background && g_paused) {
+            leave_pause();
         }
         if (!g_paused)
             scene_update(scene, dt);
@@ -1021,13 +929,6 @@ int main(int argc, char **argv)
         SDL_Rect dst = fit_rect(window);
         SDL_RenderTexture(renderer, canvas, NULL, &(SDL_FRect){(float)dst.x, (float)dst.y,
                                                                (float)dst.w, (float)dst.h});
-        if (g_hud_enabled) {
-            HudLayout hl;
-            get_hud_layout(&hl, window);
-            char title[48];
-            snprintf(title, sizeof(title), "SCENA %d", scene ? scene->id : 0);
-            hud_draw(renderer, &hl, g_paused, g_sound_on, g_music_on, title);
-        }
         SDL_RenderPresent(renderer);
 
         if (scene->request_pending) {

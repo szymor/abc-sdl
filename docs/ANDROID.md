@@ -103,9 +103,6 @@ passes validation.  An interrupted import is cleaned up on the next launch.
 The app needs roughly 650 MB of free space during import (the source and the
 copy coexist temporarily).
 
-Settings are available from the in-game pause menu under **DANE GRY**:
-change the game data or remove imported data.
-
 ### Developer shortcut
 
 For fast iteration you can skip the file picker and push content directly:
@@ -153,9 +150,8 @@ work.  Desktop still uses FluidSynth when the playlists point at `.mid` files.
 ## UI and touch controls
 
 * **Landscape**, 4:3 stage, letterboxed and safe-area aware.
-* The system HUD sits in the right letterbox on wide phones:
-  **Pause**, **Home (train)**, **Sound**, **Back**.
-* On 4:3 screens with no side bar, the HUD floats at the top-right.
+* There is no persistent Android-only HUD or side rail; the game uses the
+  whole stage, like the original and the desktop port.
 * The original pencil toolbar is always raised in touch mode.
 * **Tap** = click.  **Press** = hover (word-screen syllables/highlights).
 * **Swipe/drag the train** to scroll; tapping a wagon opens it.
@@ -168,8 +164,8 @@ work.  Desktop still uses FluidSynth when the playlists point at `.mid` files.
   small slop, because the original targets are small.
 * Android Back/gesture: closes overlays, then goes back, then requires a second
   back within 2 seconds to exit.
-* Returning from the background shows the pause menu instead of dropping the
-  child straight back into a game.
+* Backgrounding pauses music and the game; returning to the foreground resumes
+  automatically, with no pause panel.
 * Exported pictures (`kPrint`) are saved to the Pictures collection
   (`Pictures/Moje Pierwsze ABC`) on Android 10+.
 
@@ -192,5 +188,5 @@ the app.
 * Activity state is not serialized.  If Android kills the process during a
   game, the app starts again at the splash/train; completed data is not lost
   because no progress is stored.
-* The pause menu currently exposes music/sound toggles, not separate volume
-  sliders.
+* There is no in-game content manager after the first run.  To replace the
+  imported CD data, clear the app's storage and import it again.

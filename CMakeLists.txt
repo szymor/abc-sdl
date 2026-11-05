@@ -21,7 +21,6 @@ set(ABC_SOURCES
   src/font.c
   src/video.c
   src/platform/platform.c
-  src/ui/hud.c
 )
 
 if(ANDROID)
