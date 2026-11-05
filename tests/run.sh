@@ -2,12 +2,12 @@
 # Headless regression suite. Requires a release build and the extracted CD.
 #
 #   cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j
-#   DATA=../abc-re/abc tests/run.sh
+#   DATA=docs/abc-re/abc tests/run.sh
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
 BIN=${BIN:-$ROOT/build/abc-sdl}
-DATA=${DATA:-$ROOT/../abc-re/abc}
+DATA=${DATA:-$ROOT/docs/abc-re/abc}
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 

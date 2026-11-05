@@ -21,7 +21,7 @@ tests/out/
 *.swp
 .DS_Store
 
-# Local data link (the original CD tree lives in abc-re/abc)
+# Local data link (the original CD tree lives in docs/abc-re/abc)
 data/
 
 # Android build inputs/outputs

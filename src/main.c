@@ -112,8 +112,8 @@ static const char *pick_data_root(const char *requested)
     static const char *candidates[] = {
         "abc",
         "./abc",
-        "../abc-re/abc",
-        "../../abc-re/abc",
+        "docs/abc-re/abc",
+        "../docs/abc-re/abc",
         NULL,
     };
     for (int i = 0; candidates[i]; i++) {

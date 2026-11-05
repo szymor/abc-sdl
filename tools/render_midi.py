@@ -7,7 +7,7 @@ every device.  The generated files live in addon/MIDI/ and are also accepted
 by the desktop build, which then does not need FluidSynth at runtime.
 
 Usage:
-    tools/render_midi.py --abc ../abc-re/abc --addon addon \
+    tools/render_midi.py --abc docs/abc-re/abc --addon addon \
         --soundfont /usr/share/soundfonts/FluidR3_GM.sf2
 """
 from __future__ import annotations
@@ -41,7 +41,7 @@ def find_soundfont(explicit: str | None) -> Path:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--abc", default="../abc-re/abc", help="extracted CD tree")
+    parser.add_argument("--abc", default="docs/abc-re/abc", help="extracted CD tree")
     parser.add_argument("--addon", default="addon", help="addon output root")
     parser.add_argument("--soundfont", default=None, help="GM soundfont (.sf2)")
     parser.add_argument("--quality", default="4", help="Vorbis quality (default 4)")

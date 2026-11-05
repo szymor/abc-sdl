@@ -65,7 +65,7 @@ def c_array(blob):
 
 
 def main():
-    exe = sys.argv[1] if len(sys.argv) > 1 else "../abc-re/abc/ABC.EXE"
+    exe = sys.argv[1] if len(sys.argv) > 1 else "docs/abc-re/abc/ABC.EXE"
     here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     out_path = os.path.join(here, "src", "cursors_data.h")
     entries = []

@@ -100,7 +100,7 @@ change data, import addons, or remove imported data.
 For fast iteration you can skip the file picker and push content directly:
 
 ```bash
-adb push ../abc-re/abc /sdcard/Android/data/pl.szymor.abc/files/abc
+adb push docs/abc-re/abc /sdcard/Android/data/pl.szymor.abc/files/abc
 adb shell am force-stop pl.szymor.abc
 adb shell am start -n pl.szymor.abc/.SetupActivity
 ```
@@ -130,7 +130,7 @@ machine:
 
 ```bash
 python3 tools/render_midi.py \
-  --abc ../abc-re/abc \
+  --abc docs/abc-re/abc \
   --addon addon \
   --soundfont /usr/share/soundfonts/FluidR3_GM.sf2
 ```

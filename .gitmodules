@@ -1,0 +1,3 @@
+[submodule "docs/abc-re"]
+	path = docs/abc-re
+	url = https://github.com/szymor/abc-re.git

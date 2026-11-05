@@ -10,7 +10,7 @@ The original is a 16-bit Windows 3.1 / Delphi 1 application running at
 runtime. There is no per-scene code.
 
 The reverse-engineering specification this port is based on lives in
-[`abc-re/docs`](../abc-re/docs).
+[`abc-re/docs`](docs/abc-re/docs).
 
 ---
 
@@ -69,7 +69,7 @@ cmake --build build -j
 `icoutils`); regenerate it with:
 
 ```bash
-python3 tools/extract_cursors.py ../abc-re/abc/ABC.EXE
+python3 tools/extract_cursors.py docs/abc-re/abc/ABC.EXE
 ```
 
 ## Run
@@ -84,7 +84,7 @@ python3 tools/extract_cursors.py ../abc-re/abc/ABC.EXE
 1. `$ABC_DATA`
 2. `Glowny=` in `ABC.INI` in the current directory
 3. `./abc`
-4. `../abc-re/abc`
+4. `docs/abc-re/abc`
 
 Assets missing from the disc tree are looked up in an addon directory. The
 default is `./addon` in the repository root (also found as `../addon` when
@@ -395,7 +395,7 @@ the parser counts, loads and renders every scene, walks the train→letter→wor
 handling and task-cue playback, checks IGLO navigation, and plays video clips:
 
 ```bash
-DATA=../abc-re/abc tests/run.sh
+DATA=docs/abc-re/abc tests/run.sh
 ```
 
 Individual tools:
@@ -403,7 +403,7 @@ Individual tools:
 Data validation (no window needed):
 
 ```bash
-./build/abc-sdl --data ../abc-re/abc --validate
+./build/abc-sdl --data docs/abc-re/abc --validate
 # scenes: 294
 # streams: 6330
 # parse errors: 0
@@ -412,7 +412,7 @@ Data validation (no window needed):
 Render a scene:
 
 ```bash
-SDL_VIDEODRIVER=dummy ./build/abc-sdl --data ../abc-re/abc --mute \
+SDL_VIDEODRIVER=dummy ./build/abc-sdl --data docs/abc-re/abc --mute \
     --shot 3016 --out /tmp/3016.png
 ```
 
@@ -434,7 +434,7 @@ dump                 # back in 3001
 ```
 
 ```bash
-SDL_VIDEODRIVER=dummy ./build/abc-sdl --data ../abc-re/abc --mute \
+SDL_VIDEODRIVER=dummy ./build/abc-sdl --data docs/abc-re/abc --mute \
     --script /tmp/flow.txt
 ```
 
