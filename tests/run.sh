@@ -40,6 +40,22 @@ if grep -qiE "error|cannot|failed" "$TMP/all.log"; then
 fi
 echo "   $LOADED scene loads/renders"
 
+echo "== short-palette bitmaps"
+cat > "$TMP/palette.txt" <<EOF
+scene 11053
+wait 10
+shot $TMP/palette.png
+EOF
+ABC_DEBUG=1 SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
+    --script "$TMP/palette.txt" > "$TMP/palette.log" 2>&1
+for comp in tlo k02 k09; do
+    if ! grep -q "draw $comp .*tex=0x" "$TMP/palette.log"; then
+        echo "embedded bitmap $comp failed to load" >&2
+        exit 1
+    fi
+done
+echo "   bitmaps with fewer than 256 palette colours load"
+
 echo "== navigation flow"
 SDL_VIDEODRIVER=dummy "$BIN" --data "$DATA" --mute \
     --start 1001 --script "$ROOT/tests/flows.txt" > "$TMP/flows.log" 2>&1

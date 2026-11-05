@@ -108,6 +108,58 @@ static const unsigned char *bmp_trim(const unsigned char *d, int n, int *out_len
     return NULL;
 }
 
+/* Some original 8-bpp bitmaps declare fewer than 256 palette entries but
+   still use the missing high indices (usually for black outlines).  SDL3
+   rejects those, so pad the palette with black entries and retry. */
+static const unsigned char *bmp_pad_palette(const unsigned char *p, int len,
+                                            int *out_len, unsigned char **alloc)
+{
+    *alloc = NULL;
+    if (len < 54)
+        return NULL;
+    int hdr = le32(p + 14);
+    int bpp = le16(p + 28);
+    int ncol = le32(p + 46);
+    int off = le32(p + 10);
+    if (hdr != 40 || bpp != 8 || ncol < 1 || ncol >= 256 ||
+        off != 54 + ncol * 4 || off > len)
+        return NULL;
+    bool used = false;
+    for (int i = off; i < len; i++) {
+        if ((unsigned char)p[i] >= ncol) {
+            used = true;
+            break;
+        }
+    }
+    if (!used)
+        return NULL;
+    int pad = (256 - ncol) * 4;
+    unsigned char *q = xmalloc((size_t)len + (size_t)pad);
+    memcpy(q, p, (size_t)off);
+    memset(q + off, 0, (size_t)pad);
+    memcpy(q + off + pad, p + off, (size_t)(len - off));
+    int size = le32(q + 2);
+    int data = le32(q + 10);
+    if (size <= 0 || size > len)
+        size = len;
+    size += pad;
+    data += pad;
+    q[2] = (unsigned char)(size & 0xFF);
+    q[3] = (unsigned char)((size >> 8) & 0xFF);
+    q[4] = (unsigned char)((size >> 16) & 0xFF);
+    q[5] = (unsigned char)((size >> 24) & 0xFF);
+    q[10] = (unsigned char)(data & 0xFF);
+    q[11] = (unsigned char)((data >> 8) & 0xFF);
+    q[12] = (unsigned char)((data >> 16) & 0xFF);
+    q[13] = (unsigned char)((data >> 24) & 0xFF);
+    q[46] = 0;
+    q[47] = 1; /* biClrUsed = 256 */
+    q[48] = q[49] = 0;
+    *out_len = len + pad;
+    *alloc = q;
+    return q;
+}
+
 static SDL_Surface *bmp_surface(DfmValue *v)
 {
     if (!v || v->type != DFM_BIN)
@@ -119,7 +171,19 @@ static SDL_Surface *bmp_surface(DfmValue *v)
     SDL_IOStream *io = SDL_IOFromConstMem(p, (size_t)len);
     if (!io)
         return NULL;
-    return SDL_LoadBMP_IO(io, true);
+    SDL_Surface *surf = SDL_LoadBMP_IO(io, true);
+    if (surf)
+        return surf;
+    unsigned char *alloc = NULL;
+    int plen = 0;
+    const unsigned char *padded = bmp_pad_palette(p, len, &plen, &alloc);
+    if (!padded)
+        return NULL;
+    io = SDL_IOFromConstMem(padded, (size_t)plen);
+    if (io)
+        surf = SDL_LoadBMP_IO(io, true);
+    free(alloc);
+    return surf;
 }
 
 static SDL_Texture *texture_from_surface(SDL_Renderer *r, SDL_Surface *surf, int *w, int *h,
