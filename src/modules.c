@@ -72,7 +72,7 @@ static bool file_exists(const char *path)
 
 static bool name_has(Comp *c, const char *needle)
 {
-    return strcasestr(c->name, needle) != NULL;
+    return str_icontains(c->name, needle);
 }
 
 static int comp_num(Comp *c, char prefix)

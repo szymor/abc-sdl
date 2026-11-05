@@ -18,6 +18,7 @@ unsigned char *read_file(const char *path, size_t *len_out);
 int write_file(const char *path, const void *data, size_t len);
 
 bool str_ieq(const char *a, const char *b);
+bool str_icontains(const char *haystack, const char *needle);
 bool str_iends(const char *s, const char *suffix);
 char *str_lower(char *s);
 

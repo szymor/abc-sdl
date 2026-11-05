@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include "util.h"
 
+#include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
 #include <stdarg.h>
@@ -148,6 +149,26 @@ int write_file(const char *path, const void *data, size_t len)
 bool str_ieq(const char *a, const char *b)
 {
     return a && b && strcasecmp(a, b) == 0;
+}
+
+bool str_icontains(const char *haystack, const char *needle)
+{
+    if (!haystack || !needle)
+        return false;
+    if (!*needle)
+        return true;
+    for (const char *h = haystack; *h; h++) {
+        const char *a = h;
+        const char *b = needle;
+        while (*a && *b &&
+               tolower((unsigned char)*a) == tolower((unsigned char)*b)) {
+            a++;
+            b++;
+        }
+        if (!*b)
+            return true;
+    }
+    return false;
 }
 
 bool str_iends(const char *s, const char *suffix)
