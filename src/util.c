@@ -14,6 +14,9 @@
 #ifdef __ANDROID__
 #include <android/log.h>
 #endif
+#ifdef _WIN32
+#include <direct.h>
+#endif
 
 void log_info(const char *fmt, ...)
 {
@@ -252,13 +255,22 @@ char *resolve_asset_fallback(const char *root, const char *addon, const char *wi
     return primary;
 }
 
+static int make_dir(const char *path)
+{
+#ifdef _WIN32
+    return _mkdir(path);
+#else
+    return mkdir(path, 0777);
+#endif
+}
+
 int mkdir_p(const char *path)
 {
     char *tmp = xstrdup(path);
     for (char *p = tmp + 1; *p; p++) {
         if (*p == '/') {
             *p = 0;
-            if (mkdir(tmp, 0777) != 0 && errno != EEXIST) {
+            if (make_dir(tmp) != 0 && errno != EEXIST) {
                 free(tmp);
                 return -1;
             }
@@ -266,7 +278,7 @@ int mkdir_p(const char *path)
         }
     }
     int rc = 0;
-    if (mkdir(tmp, 0777) != 0 && errno != EEXIST)
+    if (make_dir(tmp) != 0 && errno != EEXIST)
         rc = -1;
     free(tmp);
     return rc;
