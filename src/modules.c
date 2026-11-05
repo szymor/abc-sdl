@@ -468,6 +468,24 @@ void modules_setup(Scene *s, const char *data_root)
         }
     }
 
+    /* The splash form's TWavePlayer has no file property in the data; the
+       executable assigns its title recording explicitly. */
+    if (s->id == 100) {
+        char *p = scene_resolve_asset(s, "\\WAV\\00.WAV");
+        if (file_exists(p)) {
+            MIX_Audio *a = audio_load_file(p);
+            if (a) {
+                if (getenv("ABC_DEBUG"))
+                    log_info("splash title cue");
+                audio_play(a, 1.0f);
+                /* The original lets the title recording finish even if the
+                   splash is clicked away before its 4 s timer expires. */
+                s->keep_audio_on_leave = true;
+            }
+        }
+        free(p);
+    }
+
     /* Telewizorek: the title syllables, upper/lower-case letters and the
        object are highlight overlays.  The base art is baked into `tlo`;
        the overlays only appear while the pointer is over them (the original

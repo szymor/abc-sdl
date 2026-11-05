@@ -670,6 +670,20 @@ if [ "$(grep -c "scene=13077 found=0 target=6" "$TMP/szczcues.log")" -ne 1 ] ||
 fi
 echo "   ellipse-only hits; per-difference cue; penultimate cue; one final summary"
 
+echo "== splash title sound"
+cat > "$TMP/splash.txt" <<'EOF'
+wait 100
+click 400 300
+wait 200
+dump
+EOF
+ABC_DEBUG=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=dummy "$BIN" \
+    --data "$DATA" --script "$TMP/splash.txt" > "$TMP/splash.log" 2>&1
+grep -q "splash title cue" "$TMP/splash.log"
+grep -q "keeping splash audio" "$TMP/splash.log"
+grep -q "scene=1001" "$TMP/splash.log"
+echo "   splash recording is not cut when the splash is dismissed early"
+
 echo "== word-arrow audio across navigation"
 cat > "$TMP/arrowaudio.txt" <<'EOF'
 scene 3004

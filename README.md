@@ -20,7 +20,7 @@ The reverse-engineering specification this port is based on lives in
 |------|-------|
 | DFM/FRM parser | complete — all **294 scenes / 6330 component streams** parse with 0 errors |
 | Scene manager | complete — ID-driven navigation, 640×480 logical canvas, letterboxed scaling |
-| Splash (Winietka) | complete — 4 s timer, click to skip |
+| Splash (Winietka) | complete — 4 s timer, click to skip, plays `WAV/00.WAV` |
 | Train hub (Ciuchcia) | complete — 24 calibrated wagon hitboxes, edge scrolling, persistent scroll position, mouse wheel, exit, credits video |
 | Letter playground (Literka) | complete — hover-reveal objects, all 24 letters, touch-friendly reveal-first click |
 | Word screen (Telewizorek) | complete — titles, sprites, word arrows, letter buttons, train icon, MIDI |

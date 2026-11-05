@@ -1280,7 +1280,8 @@ void scene_free(Scene *s)
        the target word and must survive the immediate scene change. */
     if (s->keep_audio_on_leave) {
         if (getenv("ABC_DEBUG")) {
-            const char *what = s->module == 2 ? "letter-object" :
+            const char *what = s->module == 0 ? "splash" :
+                               s->module == 2 ? "letter-object" :
                                s->module == 3 ? "word-arrow" : "click";
             log_info("keeping %s audio across scene %d ->", what, s->id);
         }
